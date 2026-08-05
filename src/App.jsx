@@ -134,14 +134,6 @@ export default function App() {
             {/* Language Quick Switch */}
             <LanguageDropdown variant="default" />
 
-            {/* Dark Mode toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-1.5 md:p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl border border-slate-200/40 transition-all"
-              title="Toggle theme"
-            >
-              {darkMode ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
 
             {/* Notifications Bell */}
             {activeRole === 'farmer' && (

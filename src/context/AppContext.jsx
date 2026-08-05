@@ -94,7 +94,7 @@ export const AppProvider = ({ children }) => {
   } = useCattle(farmerId);
 
   // Alerts / Notifications
-  const { notifications, markRead, markAllRead } = useAlerts(farmerId);
+  const { notifications, markRead, markAllRead, clearAlerts } = useAlerts(farmerId);
 
   // Consultations
   const {
@@ -213,6 +213,7 @@ export const AppProvider = ({ children }) => {
         setNotifications: () => {}, // no-op shim for backward compatibility
         markRead,
         markAllRead,
+        clearAlerts,
 
         // Consultations (from useConsultations)
         consultations,

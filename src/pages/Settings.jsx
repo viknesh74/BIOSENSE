@@ -34,23 +34,6 @@ export default function SettingsPage() {
             <LanguageDropdown variant="settings" />
         </div>
 
-        {/* Dark Mode Toggler */}
-        <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-850">
-          <div className="flex items-center gap-3">
-            {darkMode ? <Sun className="text-amber-400" size={20} /> : <Moon className="text-indigo-400" size={20} />}
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('Dark Mode Presentation', 'இரவு நேர தோற்றம்')}</h3>
-              <p className="text-slate-400 text-xxs mt-0.5">{t('Toggle clean dark theme presentation.', 'கருப்பு நிற தோற்றத்தை மாற்றவும்.')}</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 transition-all"
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-        </div>
 
         {/* Alert Preferences */}
         <div className="space-y-4">

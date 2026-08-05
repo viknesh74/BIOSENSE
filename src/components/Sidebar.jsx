@@ -33,6 +33,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     darkMode,
     setDarkMode,
     notifications,
+    setSelectedCattleId,
     t
   } = useContext(AppContext);
 
@@ -74,6 +75,9 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   const handleNavClick = (id) => {
     setActiveTab(id);
+    if (id === 'cattle-details') {
+      setSelectedCattleId(null);
+    }
     if (setIsOpen) setIsOpen(false); // Close drawer on mobile after clicking
   };
 
@@ -184,27 +188,10 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                     <LanguageDropdown variant="sidebar" />
                   </div>
                 </div>
-                
-                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1">
-                  <span>{t('Theme', 'தீம்')}</span>
-                  <button
-                    onClick={() => setDarkMode(!darkMode)}
-                    className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
-                  >
-                    {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-                  </button>
-                </div>
               </div>
             ) : (
               <div className="hidden md:flex flex-col items-center gap-3 w-full px-2">
                 <LanguageDropdown variant="sidebar-icon" />
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className="p-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:text-slate-900 dark:hover:text-white transition-colors"
-                  title="Toggle Theme"
-                >
-                  {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-                </button>
               </div>
             )}
 

@@ -98,3 +98,22 @@ export async function markAllAlertsRead(farmerId) {
     console.warn("markAllAlertsRead error:", e.message);
   }
 }
+
+export async function clearAllAlerts(farmerId) {
+  _localAlerts = [];
+  _notify();
+
+  if (!db) return;
+  try {
+    const q = query(
+      collection(db, 'alerts'),
+      where('farmerId', '==', farmerId || 'farmer-uma')
+    );
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  } catch (e) {
+    console.warn("clearAllAlerts error:", e.message);
+  }
+}

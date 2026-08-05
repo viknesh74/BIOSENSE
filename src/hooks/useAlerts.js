@@ -11,7 +11,8 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   subscribeToAlerts,
   markAlertRead,
-  markAllAlertsRead
+  markAllAlertsRead,
+  clearAllAlerts
 } from '../services/alertService';
 
 /**
@@ -43,5 +44,12 @@ export function useAlerts(farmerId = 'farmer-uma') {
     await markAllAlertsRead(farmerId);
   }, [farmerId]);
 
-  return { notifications, markRead, markAllRead };
+  /**
+   * Clear all alerts.
+   */
+  const clearAlerts = useCallback(async () => {
+    await clearAllAlerts(farmerId);
+  }, [farmerId]);
+
+  return { notifications, markRead, markAllRead, clearAlerts };
 }

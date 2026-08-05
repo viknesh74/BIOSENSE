@@ -1,7 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Shield, Key, ArrowRight } from 'lucide-react';
-import canvasConfetti from 'canvas-confetti';
 
 export default function Home() {
   const { setActiveRole, setActiveTab, t } = useContext(AppContext);
@@ -36,12 +35,6 @@ export default function Home() {
       setErrorMsg(t('Please enter your ID', 'தயவுசெய்து உங்கள் ஐடியை உள்ளிடவும்', 'कृपया अपनी आईडी दर्ज करें'));
       return;
     }
-
-    canvasConfetti({
-      particleCount: 80,
-      spread: 60,
-      origin: { y: 0.85 }
-    });
 
     setActiveRole(activeLoginTab);
     setActiveTab(activeLoginTab === 'farmer' ? 'dashboard' : 'doctor-dashboard');
@@ -105,23 +98,23 @@ export default function Home() {
           
           <div className="w-full max-w-md flex flex-col items-center">
             {/* Floating Tabs */}
-            <div className="flex gap-4 mb-0 z-10 bg-white dark:bg-slate-900 p-1.5 rounded-t-2xl border-x border-t border-slate-200 dark:border-slate-800 translate-y-2">
+            <div className="flex gap-2 mb-6 p-1.5 bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 z-10 w-fit">
               <button
                 onClick={() => handleTabSwitch('farmer')}
-                className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${
+                className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all ${
                   activeLoginTab === 'farmer' 
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
-                    : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-transparent'
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 shadow-sm' 
+                    : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
               >
                 {t('Farmer Login', 'விவசாயி', 'किसान')}
               </button>
               <button
                 onClick={() => handleTabSwitch('doctor')}
-                className={`px-6 py-2 rounded-xl font-bold text-sm transition-all ${
+                className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all ${
                   activeLoginTab === 'doctor' 
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-700/20' 
-                    : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 border border-transparent'
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 shadow-sm' 
+                    : 'bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
               >
                 {t('Vet Doctor Login', 'மருத்துவர்', 'पशु चिकित्सक')}

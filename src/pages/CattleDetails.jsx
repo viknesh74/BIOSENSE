@@ -5,7 +5,7 @@ import { Heart, Thermometer, MapPin, Battery, Eye, Download, AlertTriangle, Shie
 export default function CattleDetails() {
   const { cattle, selectedCattleId, setSelectedCattleId, setActiveTab, t } = useContext(AppContext);
   
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'detail'
+  const [viewMode, setViewMode] = useState(selectedCattleId ? 'detail' : 'list'); // 'list' or 'detail'
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter cattle for the list view
