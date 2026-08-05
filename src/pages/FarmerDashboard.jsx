@@ -1,7 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Plus, ArrowRight, ShieldAlert, Heart, Battery, Compass, ChevronRight, Activity, Thermometer } from 'lucide-react';
-import canvasConfetti from 'canvas-confetti';
 
 export default function FarmerDashboard() {
   const { cattle, addCollar, setSelectedCattleId, setActiveTab, t } = useContext(AppContext);
@@ -68,7 +67,7 @@ export default function FarmerDashboard() {
         breed,
         age,
         gender,
-        photo: photoPreview || 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=500&auto=format&fit=crop&q=80'
+        photo: photoPreview || ''
       });
 
       // Reset and close
@@ -84,12 +83,6 @@ export default function FarmerDashboard() {
       setIsConnecting(false);
       setShowAddModal(false);
 
-      // Confetti burst
-      canvasConfetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
     }, 1500);
   };
 
@@ -190,11 +183,17 @@ export default function FarmerDashboard() {
             >
               {/* Card Header Info */}
               <div className="p-5 flex gap-4">
-                <img
-                  src={cow.photo}
-                  alt={cow.name}
-                  className="w-20 h-20 rounded-2xl object-cover border border-slate-100 dark:border-slate-800 group-hover:scale-105 transition-transform"
-                />
+                {cow.photo ? (
+                  <img
+                    src={cow.photo}
+                    alt={cow.name}
+                    className="w-20 h-20 rounded-2xl object-cover border border-slate-100 dark:border-slate-800 group-hover:scale-105 transition-transform shrink-0"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition-transform">
+                    {cow.animalType === 'Sheep' ? '🐑' : cow.animalType === 'Goat' ? '🐐' : cow.animalType === 'Buffalo' ? '🐃' : '🐄'}
+                  </div>
+                )}
                 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">

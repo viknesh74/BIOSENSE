@@ -59,11 +59,17 @@ export default function CattleDetails() {
                   className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden hover:shadow-lg transition-all cursor-pointer group hover:-translate-y-1 flex flex-col"
                 >
                   <div className="h-40 overflow-hidden relative">
-                    <img
-                      src={cow.photo}
-                      alt={cow.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    {cow.photo ? (
+                      <img
+                        src={cow.photo}
+                        alt={cow.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-500">
+                        {cow.animalType === 'Sheep' ? '🐑' : cow.animalType === 'Goat' ? '🐐' : cow.animalType === 'Buffalo' ? '🐃' : '🐄'}
+                      </div>
+                    )}
                     <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold rounded-lg border border-white/10 uppercase tracking-widest">
                       ID: {cow.id}
                     </div>
@@ -170,11 +176,17 @@ export default function CattleDetails() {
       {/* Meta Profile Card */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-3 animate-in fade-in zoom-in-95 duration-300">
         <div className="md:col-span-1 h-64 md:h-full min-h-[220px]">
-          <img
-            src={cow.photo}
-            alt={cow.name}
-            className="w-full h-full object-cover"
-          />
+          {cow.photo ? (
+            <img
+              src={cow.photo}
+              alt={cow.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-8xl">
+              {cow.animalType === 'Sheep' ? '🐑' : cow.animalType === 'Goat' ? '🐐' : cow.animalType === 'Buffalo' ? '🐃' : '🐄'}
+            </div>
+          )}
         </div>
 
         <div className="md:col-span-2 p-6 flex flex-col justify-between space-y-4">

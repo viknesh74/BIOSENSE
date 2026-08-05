@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Compass, MapPin, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
 
@@ -19,12 +19,22 @@ export default function GPSTracking() {
 
   const isBreached = distance > 120; // safe zone radius: 120 meters
 
+  const getAnimalEmoji = (type) => {
+    switch(type) {
+      case 'Sheep': return '🐑';
+      case 'Goat': return '🐐';
+      case 'Buffalo': return '🐃';
+      default: return '🐄';
+    }
+  };
+  const animalEmoji = getAnimalEmoji(cow.animalType);
+
   // Custom marker icons using Leaflet divIcon to bypass 404 image bundle errors
   const cowIcon = L.divIcon({
     className: 'custom-div-icon',
     html: `
       <div class="relative flex items-center justify-center">
-        <div class="absolute w-10 h-10 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center shadow-lg text-lg hover:scale-110 transition-transform">🐄</div>
+        <div class="absolute w-10 h-10 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center shadow-lg text-lg hover:scale-110 transition-transform">${animalEmoji}</div>
         <div class="w-10 h-10 rounded-full bg-emerald-500/35 absolute inset-0 animate-ping radar-ring"></div>
       </div>
     `,
@@ -37,7 +47,7 @@ export default function GPSTracking() {
     className: 'custom-div-icon',
     html: `
       <div class="relative flex items-center justify-center">
-        <div class="absolute w-10 h-10 bg-rose-500 rounded-full border-2 border-white flex items-center justify-center shadow-lg text-lg animate-bounce">🐄</div>
+        <div class="absolute w-10 h-10 bg-rose-500 rounded-full border-2 border-white flex items-center justify-center shadow-lg text-lg animate-bounce">${animalEmoji}</div>
         <div class="w-10 h-10 rounded-full bg-rose-500/40 absolute inset-0 animate-ping radar-ring"></div>
       </div>
     `,
@@ -58,12 +68,14 @@ export default function GPSTracking() {
 
   const activeIcon = isBreached ? criticalIcon : cowIcon;
 
-  // Fly map viewport to cow position when telemetry moves
-  useEffect(() => {
-    if (mapRef.current) {
-      mapRef.current.setView([lat, lng], 17);
-    }
-  }, [lat, lng]);
+  // Component to handle map re-centering
+  const MapController = ({ center }) => {
+    const map = useMap();
+    useEffect(() => {
+      map.setView(center, map.getZoom());
+    }, [center, map]);
+    return null;
+  };
 
   const recenterMap = () => {
     if (mapRef.current) {
@@ -121,11 +133,15 @@ export default function GPSTracking() {
             zoom={17}
             scrollWheelZoom={true}
             ref={mapRef}
+            className="w-full h-full"
+            style={{ height: '100%', minHeight: '350px' }}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            
+            <MapController center={[lat, lng]} />
             
             {/* Geofence safe circle (120 meters radius) */}
             <Circle
