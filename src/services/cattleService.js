@@ -18,8 +18,15 @@ export async function getCattle(farmerId) {
     const q = query(collection(db, 'cattle'), where('farmerId', '==', farmerId || 'farmer-uma'));
     const snapshot = await getDocs(q);
     const firestoreData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const sanitizeLions = (cattleList) => cattleList.map(c => ({
+      ...c,
+      photo: c.photo && c.photo.includes('1546182990-dffeafbe841d') 
+        ? 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=500&auto=format&fit=crop&q=80'
+        : c.photo
+    }));
+
     // If Firestore is empty, return demo data so the dashboard is never blank
-    return firestoreData.length > 0 ? firestoreData : _fallbackCattle;
+    return firestoreData.length > 0 ? sanitizeLions(firestoreData) : sanitizeLions(_fallbackCattle);
   } catch (e) {
     console.warn('getCattle error (using fallback):', e.message);
     return _fallbackCattle;
@@ -35,7 +42,7 @@ export async function addCattle(collarData) {
     age: `${collarData.age || 2} Years`,
     gender: collarData.gender || 'Female',
     farmerId: collarData.farmerId || 'farmer-uma',
-    photo: collarData.photo || 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=500&auto=format&fit=crop&q=80',
+    photo: collarData.photo || 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=500&auto=format&fit=crop&q=80',
     telemetry: {
       heartRate: 72, temperature: 38.6, battery: 100,
       gps: { lat: CENTER_LAT, lng: CENTER_LNG }, lastUpdated: 'Just now'

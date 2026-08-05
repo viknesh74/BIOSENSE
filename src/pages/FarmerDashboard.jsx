@@ -8,8 +8,8 @@ export default function FarmerDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Form states
+  const [animalType, setAnimalType] = useState('');
   const [name, setName] = useState('');
-  const [nickname, setNickname] = useState('');
   const [collarId, setCollarId] = useState('');
   const [breed, setBreed] = useState('Gir');
   const [age, setAge] = useState('3');
@@ -44,8 +44,12 @@ export default function FarmerDashboard() {
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
+    if (!animalType) {
+      setErrorMsg(t('Please select an animal type', 'மாட்டின் வகையை தேர்ந்தெடுக்கவும்', 'पशु का प्रकार चुनें'));
+      return;
+    }
     if (!name.trim()) {
-      setErrorMsg(t('Please enter an animal name', 'தயவுசெய்து மாட்டின் பெயரை உள்ளிடவும்'));
+      setErrorMsg(t('Please enter a nick name', 'செல்லப் பெயரை உள்ளிடவும்', 'उपनाम दर्ज करें'));
       return;
     }
     if (!collarId.trim()) {
@@ -60,16 +64,16 @@ export default function FarmerDashboard() {
       addCollar({
         id: collarId,
         name,
-        nickname,
+        animalType,
         breed,
         age,
         gender,
-        photo: photoPreview || 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=500&auto=format&fit=crop&q=80'
+        photo: photoPreview || 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=500&auto=format&fit=crop&q=80'
       });
 
       // Reset and close
+      setAnimalType('');
       setName('');
-      setNickname('');
       setCollarId('');
       setBreed('Gir');
       setAge('3');
@@ -205,7 +209,7 @@ export default function FarmerDashboard() {
                   </h3>
                   
                   <p className="text-xs text-slate-500 font-medium">
-                    {cow.breed} • {cow.age} • {cow.gender}
+                    {cow.animalType || 'Cow'} • {cow.breed} • {cow.age} • {cow.gender}
                   </p>
                 </div>
               </div>
@@ -308,22 +312,26 @@ export default function FarmerDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('Animal Name', 'மாட்டின் பெயர்')}</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Lakshmi"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-850 dark:text-white border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-sm font-semibold"
-                  />
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('Animal Type', 'மாட்டின் வகை', 'पशु का प्रकार')}</label>
+                  <select
+                    value={animalType}
+                    onChange={(e) => setAnimalType(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-850 dark:text-white border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-sm font-semibold"
+                  >
+                    <option value="" disabled>{t('Select type...', 'வகை தேர்ந்தெடுக்கவும்...', 'प्रकार चुनें...')}</option>
+                    <option value="Cow">{t('Cow', 'மாடு', 'गाय')}</option>
+                    <option value="Sheep">{t('Sheep', 'செம்மறி ஆடு', 'भेड़')}</option>
+                    <option value="Goat">{t('Goat', 'வெள்ளாடு', 'बकरी')}</option>
+                    <option value="Buffalo">{t('Buffalo', 'எருமை', 'भैंस')}</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('Nick Name', 'செல்லப் பெயர்')}</label>
                   <input
                     type="text"
                     placeholder="e.g. Lachu"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-850 dark:text-white border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-sm font-semibold"
                   />
                 </div>
@@ -348,10 +356,35 @@ export default function FarmerDashboard() {
                     onChange={(e) => setBreed(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-850 dark:text-white border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-sm font-semibold"
                   >
-                    <option value="Gir">Gir (Desi)</option>
-                    <option value="Jersey">Jersey</option>
-                    <option value="Holstein">Holstein</option>
-                    <option value="Sahiwal">Sahiwal</option>
+                    {animalType === 'Sheep' ? (
+                      <>
+                        <option value="Merino">Merino</option>
+                        <option value="Dorper">Dorper</option>
+                        <option value="Suffolk">Suffolk</option>
+                        <option value="Rambouillet">Rambouillet</option>
+                      </>
+                    ) : animalType === 'Goat' ? (
+                      <>
+                        <option value="Boer">Boer</option>
+                        <option value="Jamnapari">Jamnapari</option>
+                        <option value="Beetal">Beetal</option>
+                        <option value="Sirohi">Sirohi</option>
+                      </>
+                    ) : animalType === 'Buffalo' ? (
+                      <>
+                        <option value="Murrah">Murrah</option>
+                        <option value="Surti">Surti</option>
+                        <option value="Jaffarabadi">Jaffarabadi</option>
+                        <option value="Nili-Ravi">Nili-Ravi</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Gir (Desi)">Gir (Desi)</option>
+                        <option value="Jersey">Jersey</option>
+                        <option value="Holstein">Holstein</option>
+                        <option value="Sahiwal">Sahiwal</option>
+                      </>
+                    )}
                   </select>
                 </div>
 

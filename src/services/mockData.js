@@ -36,7 +36,7 @@ export const MOCK_CATTLE = [
     age: '3.5 Years',
     gender: 'Female',
     farmerId: 'farmer-uma',
-    photo: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=500&auto=format&fit=crop&q=80',
+    photo: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?w=500&auto=format&fit=crop&q=80',
     telemetry: {
       heartRate: 78,
       temperature: 39.1,

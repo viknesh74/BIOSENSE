@@ -89,13 +89,13 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
       {/* Sidebar / Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between bg-slate-900 text-slate-100 border-r border-slate-800 transition-transform duration-300 transform md:relative md:translate-x-0 ${
-          isOpen ? 'translate-x-0 shadow-2xl shadow-slate-900/50' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800 transition-transform duration-300 transform md:relative md:translate-x-0 ${
+          isOpen ? 'translate-x-0 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50' : '-translate-x-full'
         } ${collapsed ? 'md:w-20' : 'w-72 md:w-72'} pb-safe pt-safe h-full shrink-0`}
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-800 shrink-0">
+          <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 shrink-0">
             {!collapsed && (
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🐄</span>
@@ -112,7 +112,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             {/* Desktop Collapse Toggle */}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="hidden md:block p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors ml-auto"
+              className="hidden md:block p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors ml-auto"
             >
               {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
@@ -120,7 +120,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             {/* Mobile Close Toggle */}
             <button
               onClick={() => setIsOpen(false)}
-              className="md:hidden p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="md:hidden p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <X size={18} />
             </button>
@@ -130,15 +130,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <div className="flex-1 overflow-y-auto overflow-x-hidden">
             {/* User Role Badge */}
             {!collapsed && (
-              <div className="mx-4 my-4 p-3 bg-slate-850 rounded-xl border border-slate-800 flex items-center gap-3 shrink-0">
-                <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-400 border border-teal-500/20 shrink-0">
+              <div className="mx-4 my-4 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3 shrink-0">
+                <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-500/20 shrink-0">
                   {activeRole === 'farmer' ? '👨🌾' : '👨⚕️'}
                 </div>
                 <div className="truncate">
-                  <p className="text-[10px] sm:text-xs text-slate-400 font-semibold tracking-wider uppercase truncate">
+                  <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-semibold tracking-wider uppercase truncate">
                     {activeRole === 'farmer' ? t('Farmer Portal', 'விவசாயி பக்கம்') : t('Doctor Portal', 'மருத்துவர் பக்கம்')}
                   </p>
-                  <h4 className="text-sm font-bold text-slate-200 truncate">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-200 truncate">
                     {activeRole === 'farmer' ? 'Uma' : 'Dr. Rajesh'}
                   </h4>
                 </div>
@@ -156,11 +156,11 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                     onClick={() => handleNavClick(item.id)}
                     className={`w-full flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-xl transition-all font-medium text-sm group relative ${
                       isActive
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/20'
-                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/20'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
-                    <Icon size={20} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`} />
+                    <Icon size={20} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'}`} />
                     {!collapsed && <span className="truncate">{item.label}</span>}
                     {item.badge > 0 && (
                       <span className={`absolute ${collapsed ? 'top-1 right-2 hidden md:block' : 'right-4'} px-2 py-0.5 text-xxs font-bold bg-rose-500 text-white rounded-full`}>
@@ -174,22 +174,22 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           </div>
 
           {/* Sidebar Footer (Toggles & Logout) */}
-          <div className="p-4 border-t border-slate-800 space-y-3 shrink-0">
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
             {/* Language & Theme switches (if not collapsed) */}
             {!collapsed ? (
               <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1 w-full">
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1 w-full">
                   <span className="shrink-0 mr-2">{t('Language', 'மொழி')}</span>
                   <div className="w-32">
                     <LanguageDropdown variant="sidebar" />
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1">
                   <span>{t('Theme', 'தீம்')}</span>
                   <button
                     onClick={() => setDarkMode(!darkMode)}
-                    className="p-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors"
+                    className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
                   >
                     {darkMode ? <Sun size={14} /> : <Moon size={14} />}
                   </button>
@@ -200,7 +200,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                 <LanguageDropdown variant="sidebar-icon" />
                 <button
                   onClick={() => setDarkMode(!darkMode)}
-                  className="p-1 bg-slate-800 text-slate-300 rounded-lg"
+                  className="p-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg hover:text-slate-900 dark:hover:text-white transition-colors"
                   title="Toggle Theme"
                 >
                   {darkMode ? <Sun size={16} /> : <Moon size={16} />}
@@ -210,7 +210,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-slate-800/50 hover:bg-rose-950/40 text-slate-300 hover:text-rose-200 border border-slate-700/50 hover:border-rose-900/50 rounded-xl transition-all text-xs font-semibold ${
+              className={`w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-200 border border-slate-200 dark:border-slate-700/50 hover:border-rose-200 dark:hover:border-rose-900/50 rounded-xl transition-all text-xs font-semibold ${
                 collapsed ? 'md:px-0' : ''
               }`}
             >
