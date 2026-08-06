@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import FarmerDashboard from './pages/FarmerDashboard';
 import CattleDetails from './pages/CattleDetails';
 import HealthAnalytics from './pages/HealthAnalytics';
+import HerdAnalytics from './pages/HerdAnalytics';
 import GPSTracking from './pages/GPSTracking';
 import Alerts from './pages/Alerts';
 import GovernmentSchemes from './pages/GovernmentSchemes';
@@ -59,6 +60,8 @@ export default function App() {
       case 'cattle-details':
         return <CattleDetails />;
       case 'analytics':
+        return <HerdAnalytics />;
+      case 'cattle-analytics':
         return <HealthAnalytics />;
       case 'gps':
         return <GPSTracking />;

@@ -132,22 +132,6 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden">
-            {/* User Role Badge */}
-            {!collapsed && (
-              <div className="mx-4 my-4 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3 shrink-0">
-                <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-500/20 shrink-0">
-                  {activeRole === 'farmer' ? '👨🌾' : '👨⚕️'}
-                </div>
-                <div className="truncate">
-                  <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-semibold tracking-wider uppercase truncate">
-                    {activeRole === 'farmer' ? t('Farmer Portal', 'விவசாயி பக்கம்') : t('Doctor Portal', 'மருத்துவர் பக்கம்')}
-                  </p>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-200 truncate">
-                    {activeRole === 'farmer' ? 'Uma' : 'Dr. Rajesh'}
-                  </h4>
-                </div>
-              </div>
-            )}
 
             {/* Navigation Options */}
             <nav className="mt-2 md:mt-4 px-3 space-y-1 pb-4">
@@ -179,21 +163,6 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
           {/* Sidebar Footer (Toggles & Logout) */}
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
-            {/* Language & Theme switches (if not collapsed) */}
-            {!collapsed ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 px-1 w-full">
-                  <span className="shrink-0 mr-2">{t('Language', 'மொழி')}</span>
-                  <div className="w-32">
-                    <LanguageDropdown variant="sidebar" />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="hidden md:flex flex-col items-center gap-3 w-full px-2">
-                <LanguageDropdown variant="sidebar-icon" />
-              </div>
-            )}
 
             <button
               onClick={handleLogout}
