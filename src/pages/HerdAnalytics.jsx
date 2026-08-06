@@ -13,34 +13,15 @@ export default function HerdAnalytics() {
   const warningCount = cattle.filter(c => c.status === 'Warning').length;
   const emergencyCount = cattle.filter(c => c.status === 'Emergency').length;
 
-  // Aggregate history data (assuming all cattle have same timeLabels in this simulation)
+  // Current stats per cattle for the charts
   const chartData = useMemo(() => {
-    if (!cattle || cattle.length === 0) return [];
-    const timeLabels = cattle[0].history.timeLabels || [];
-    
-    return timeLabels.map((time, idx) => {
-      let totalHr = 0;
-      let totalTemp = 0;
-      let validHrCount = 0;
-      let validTempCount = 0;
-      
-      cattle.forEach(cow => {
-        if (cow.history.heartRate && cow.history.heartRate[idx]) {
-          totalHr += cow.history.heartRate[idx];
-          validHrCount++;
-        }
-        if (cow.history.temperature && cow.history.temperature[idx]) {
-          totalTemp += cow.history.temperature[idx];
-          validTempCount++;
-        }
-      });
-
-      return {
-        time,
-        avgHr: validHrCount ? Math.round(totalHr / validHrCount) : 0,
-        avgTemp: validTempCount ? Number((totalTemp / validTempCount).toFixed(1)) : 0
-      };
-    });
+    if (!cattle) return [];
+    return cattle.map(cow => ({
+      id: cow.id,
+      name: cow.name,
+      hr: cow.telemetry?.heartRate || 0,
+      temp: cow.telemetry?.temperature || 0
+    }));
   }, [cattle]);
 
   const pieData = [
@@ -163,23 +144,21 @@ export default function HerdAnalytics() {
           </div>
         </div>
 
-        {/* Aggregated HR/Temp Bar Chart */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm lg:col-span-2 space-y-4">
+        {/* Heart Rate Bar Chart */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm lg:col-span-1 flex flex-col space-y-4">
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
               <Heart className="text-rose-500 animate-pulse-heart" size={20} />
-              <span>{t('Average Herd Vitals Trend', 'சராசரி சுகாதார போக்கு')}</span>
+              <span>{t('Heart Rate by Collar', 'இதயத்துடிப்பு (ID)')}</span>
             </h3>
-            <p className="text-slate-400 text-xs mt-0.5">{t('Aggregated telemetry data for the entire herd over time.', 'அனைத்து மாடுகளின் சராசரி தரவுகள்.')}</p>
+            <p className="text-slate-400 text-xs mt-0.5">{t('Current BPM per cattle.', 'மாடுகளின் இதயத்துடிப்பு.')}</p>
           </div>
-
-          <div className="h-72 w-full pr-4 text-xs mt-4">
+          <div className="flex-1 min-h-[250px] w-full pr-4 text-xs mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-850" vertical={false} />
-                <XAxis dataKey="time" stroke="#94a3b8" />
-                <YAxis yAxisId="left" orientation="left" stroke="#f43f5e" domain={[50, 110]} />
-                <YAxis yAxisId="right" orientation="right" stroke="#eab308" domain={[37, 42]} />
+                <XAxis dataKey="id" stroke="#94a3b8" />
+                <YAxis stroke="#f43f5e" domain={[40, 120]} />
                 <RechartsTooltip
                   contentStyle={{
                     backgroundColor: '#0f172a',
@@ -188,22 +167,47 @@ export default function HerdAnalytics() {
                     color: '#fff'
                   }}
                 />
-                <Legend />
                 <Bar 
-                  yAxisId="left" 
-                  name={t('Avg Heart Rate (BPM)', 'சராசரி இதயத்துடிப்பு')} 
-                  dataKey="avgHr" 
+                  name={t('Heart Rate (BPM)', 'இதயத்துடிப்பு')} 
+                  dataKey="hr" 
                   fill="#f43f5e" 
                   radius={[4, 4, 0, 0]}
-                  barSize={20}
+                  barSize={24}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Temperature Bar Chart */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm lg:col-span-1 flex flex-col space-y-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
+              <Thermometer className="text-amber-500" size={20} />
+              <span>{t('Temperature by Collar', 'வெப்பநிலை (ID)')}</span>
+            </h3>
+            <p className="text-slate-400 text-xs mt-0.5">{t('Current body temp per cattle.', 'மாடுகளின் வெப்பநிலை.')}</p>
+          </div>
+          <div className="flex-1 min-h-[250px] w-full pr-4 text-xs mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-850" vertical={false} />
+                <XAxis dataKey="id" stroke="#94a3b8" />
+                <YAxis stroke="#eab308" domain={[36, 42]} />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: '#fff'
+                  }}
                 />
                 <Bar 
-                  yAxisId="right" 
-                  name={t('Avg Temp (°C)', 'சராசரி வெப்பநிலை')} 
-                  dataKey="avgTemp" 
+                  name={t('Temp (°C)', 'வெப்பநிலை')} 
+                  dataKey="temp" 
                   fill="#eab308" 
                   radius={[4, 4, 0, 0]}
-                  barSize={20}
+                  barSize={24}
                 />
               </BarChart>
             </ResponsiveContainer>

@@ -1,6 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Shield, Key, ArrowRight } from 'lucide-react';
+import Logo from '../components/Logo';
 
 export default function Home() {
   const { setActiveRole, setActiveTab, t } = useContext(AppContext);
@@ -45,13 +46,7 @@ export default function Home() {
       {/* Header Navigation */}
       <header className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-40 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-3xl">🐄</span>
-          <div>
-            <h1 className="font-extrabold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 font-display">
-              BioSense Collar
-            </h1>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-widest block uppercase">Livestock Telemetry Portal</span>
-          </div>
+          <Logo className="text-3xl" />
         </div>
 
         <div className="flex items-center gap-4">

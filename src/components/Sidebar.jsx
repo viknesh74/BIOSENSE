@@ -13,6 +13,7 @@ import {
   Bot,
   Stethoscope,
   Heart,
+  Camera,
   ChevronLeft,
   ChevronRight,
   Globe,
@@ -21,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import LanguageDropdown from './LanguageDropdown';
+import Logo from './Logo';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
   const {
@@ -52,6 +54,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { id: 'alerts', label: t('Alerts & Notifications', 'எச்சரிக்கைகள்'), icon: AlertTriangle, badge: unreadAlertsCount },
     { id: 'schemes', label: t('Govt Schemes', 'அரசு திட்டங்கள்'), icon: FileText },
     { id: 'vet-services', label: t('Nearby Vets', 'அருகிலுள்ள கால்நடை'), icon: Stethoscope },
+    { id: 'cattle-care-ai', label: t('CattleCare AI', 'CattleCare AI', 'CattleCare AI'), icon: Camera },
     { id: 'chatbot', label: t('AI Voice Chatbot', 'AI குரல் சாட்பாட்'), icon: Bot },
     { id: 'profile', label: t('My Profile', 'எனது சுயவிவரம்'), icon: User },
     { id: 'settings', label: t('Settings', 'அமைப்புகள்'), icon: Settings }
@@ -61,6 +64,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { id: 'doctor-dashboard', label: t('Doctor Dashboard', 'மருத்துவர் பக்கம்'), icon: LayoutDashboard },
     { id: 'doctor-consultation', label: t('Consultation Room', 'ஆலோசனை அறை'), icon: Stethoscope },
     { id: 'reports', label: t('Health Reports', 'சுகாதார அறிக்கைகள்'), icon: FileText },
+    { id: 'cattle-care-ai', label: t('CattleCare AI', 'CattleCare AI', 'CattleCare AI'), icon: Camera },
     { id: 'profile', label: t('Doctor Profile', 'சுயவிவரம்'), icon: User },
     { id: 'settings', label: t('Settings', 'அமைப்புகள்'), icon: Settings }
   ];
@@ -102,16 +106,10 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 shrink-0">
             {!collapsed && (
               <div className="flex items-center gap-2">
-                <span className="text-2xl">🐄</span>
-                <div>
-                  <h1 className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 text-lg leading-tight font-display tracking-wide">
-                    BioSense
-                  </h1>
-                  <span className="text-[10px] text-slate-400 font-medium tracking-widest block uppercase">Collar System</span>
-                </div>
+                <Logo className="text-2xl" />
               </div>
             )}
-            {collapsed && <span className="text-2xl mx-auto hidden md:block">🐄</span>}
+            {collapsed && <Activity className="mx-auto hidden md:block text-emerald-500" size={24} />}
             
             {/* Desktop Collapse Toggle */}
             <button

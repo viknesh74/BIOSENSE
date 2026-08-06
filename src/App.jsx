@@ -3,7 +3,6 @@ import { AppContext } from './context/AppContext';
 
 // Component imports
 import Sidebar from './components/Sidebar';
-import SimulationPanel from './components/SimulationPanel';
 
 // Page imports
 import Home from './pages/Home';
@@ -21,6 +20,7 @@ import Consultation from './pages/Consultation';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import SettingsPage from './pages/Settings';
+import CattleCareAI from './pages/CattleCareAI';
 
 // Icon imports for top bar
 import { Bell, Sun, Moon, User, Menu } from 'lucide-react';
@@ -46,7 +46,6 @@ export default function App() {
     return (
       <>
         <Home />
-        <SimulationPanel />
       </>
     );
   }
@@ -69,6 +68,8 @@ export default function App() {
         return <Alerts />;
       case 'schemes':
         return <GovernmentSchemes />;
+      case 'cattle-care-ai':
+        return <CattleCareAI />;
       case 'vet-services':
         return <VeterinaryServices />;
       case 'chatbot':
@@ -169,9 +170,6 @@ export default function App() {
           {renderActiveTab()}
         </main>
       </div>
-
-      {/* Real-time Telemetry Simulator Panel */}
-      <SimulationPanel />
     </div>
   );
 }
