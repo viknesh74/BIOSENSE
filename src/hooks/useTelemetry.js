@@ -94,5 +94,5 @@ export function useTelemetry({ cattle, simConfig, onCattleUpdate, farmerId = 'fa
       unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simConfig, farmerId]);
+  }, [simConfig, farmerId, cattle?.length]);
 }
