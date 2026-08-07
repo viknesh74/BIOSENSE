@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
@@ -18,7 +18,9 @@ let rtdb = null;
 
 try {
   const app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true
+  });
   rtdb = getDatabase(app);
   console.log('✅ Firebase connected successfully');
 } catch (e) {
