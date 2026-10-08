@@ -1,183 +1,307 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Bot, Mic, MicOff, Send, Volume2, VolumeX, HelpCircle, Sparkles } from 'lucide-react';
+import { Bot, Mic, MicOff, Send, Volume2, VolumeX, HelpCircle, Sparkles, RotateCcw, Copy, Check, AlertTriangle } from 'lucide-react';
 
-// ── Groq API (free, no GCP setup needed) ─────────────────────────────────────
+// ── Google Gemini API Configuration ───────────────────────────────────────────
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+// ── Groq Fallback ─────────────────────────────────────────────────────────────
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL   = 'llama-3.3-70b-versatile'; // free, fast, multilingual
+const GROQ_MODEL   = 'llama-3.3-70b-versatile';
 
-// ── System prompt ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are BioSense AI, an expert veterinary and livestock health assistant embedded inside a smart IoT cattle-monitoring platform called "BioSense Collar System".
+// ── System Prompt ─────────────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are BioSense AI, an expert veterinary and livestock health assistant embedded inside the smart IoT cattle-monitoring platform "BioSense Collar System".
 
-Your role:
-- Answer questions about cattle health, diseases, feeding, and farm management
-- Interpret live telemetry data (heart rate, body temperature, battery, GPS) from smart collars
-- Give actionable veterinary first-aid advice
-- Recommend when to contact a vet urgently
-- Support BOTH English and Tamil (தமிழ்) languages — always reply in the SAME language the user writes in
+Your core capabilities:
+- Answer questions about cattle health, common diseases (FMD, Mastitis, Bloat, Theileriosis, Lumpy Skin, etc.), nutrition, vaccination, and dairy farm management.
+- Interpret real-time telemetry data (heart rate, body temperature, battery, GPS, activity) from smart collars.
+- Provide step-by-step actionable veterinary first-aid and organic/home remedies suitable for Indian dairy farmers.
+- Flag critical emergencies when vitals are dangerous (Body Temp > 39.5°C / 103°F or < 38°C, Heart Rate < 40 or > 100 BPM).
+- Support English, Tamil (தமிழ்), and Hindi (हिंदी). Always respond in the EXACT same language the user asks in (if user speaks in Tamil, answer in Tamil; if in Hindi, answer in Hindi; if in English, answer in English).
 
-Guidelines:
-- Keep answers concise but helpful (2–4 sentences unless more detail is needed)
-- Use simple language suitable for Indian dairy farmers
-- Reference specific collar IDs and animal names when the user mentions them
-- If a reading seems dangerous (temp > 40°C, heart rate < 40 or > 120 BPM), flag it clearly with ⚠️
-- Never make up sensor readings — only use the live data provided in each message
-- Be warm, reassuring, and practical`;
+Response Guidelines:
+- Keep answers practical, clear, structured, and farmer-friendly (2–4 concise paragraphs or bullet points).
+- When discussing collar data, reference specific cattle names and collar IDs from the live farm telemetry.
+- Always include veterinary consultation advice for severe symptoms.
+- Be warm, helpful, and empathetic to dairy farmers.`;
 
 export default function Chatbot() {
   const { cattle, t, language } = useContext(AppContext);
-  const [messages, setMessages]         = useState([]);
-  const [inputText, setInputText]       = useState('');
-  const [isListening, setIsListening]   = useState(false);
-  const [speakResponses, setSpeakResponses] = useState(true);
-  const [isThinking, setIsThinking]     = useState(false);
-  const [chatHistory, setChatHistory]   = useState([]); // multi-turn memory
-  const chatEndRef    = useRef(null);
-  const recognitionRef = useRef(null);
+  const [messages, setMessages]                 = useState([]);
+  const [inputText, setInputText]               = useState('');
+  const [isListening, setIsListening]           = useState(false);
+  const [speakResponses, setSpeakResponses]     = useState(true);
+  const [isThinking, setIsThinking]             = useState(false);
+  const [chatHistory, setChatHistory]           = useState([]); // { role: 'user' | 'model', text: string }
+  const [copiedIndex, setCopiedIndex]           = useState(null);
+  const [voices, setVoices]                     = useState([]);
 
-  // ── Welcome message ───────────────────────────────────────────────────────────
+  const chatEndRef       = useRef(null);
+  const recognitionRef   = useRef(null);
+
+  // ── Load Speech Synthesis Voices ──────────────────────────────────────────
   useEffect(() => {
+    const updateVoices = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        setVoices(window.speechSynthesis.getVoices() || []);
+      }
+    };
+    updateVoices();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+  }, []);
+
+  // ── Welcome Message on Language Change ────────────────────────────────────
+  useEffect(() => {
+    const welcomeMsg = language === 'ta'
+      ? 'வணக்கம்! நான் BioSense AI உதவியாளர். உங்கள் கால்நடைகளின் உடல்நிலை, வெப்பநிலை, இதயத்துடிப்பு அல்லது ஏதேனும் நோய் அறிகுறிகள் பற்றி கேளுங்கள். நான் குரல் மூலமாகவும் பேசுவேன்! 🐄'
+      : language === 'hi'
+      ? 'नमस्ते! मैं बायोसेन्स एआई सहायक हूँ। अपने पशुओं के स्वास्थ्य, तापमान, हृदय गति या किसी बीमारी के बारे में कुछ भी पूछें। मैं हिंदी में बोलकर भी उत्तर दूंगा! 🐄'
+      : "Hello! I'm BioSense AI, your smart livestock veterinary assistant powered by Google Gemini. Ask me anything about your herd's health, live sensor readings, or first-aid remedies! 🐄";
+
     setMessages([{
       sender: 'bot',
-      text: language === 'ta'
-        ? 'வணக்கம்! நான் BioSense AI உதவியாளர். உங்கள் கால்நடைகளின் உடல்நிலை, வெப்பநிலை, இதயத்துடிப்பு பற்றி எந்த கேள்வியும் கேளுங்கள். நான் தமிழிலும் பதில் சொல்வேன்! 🐄'
-        : language === 'hi'
-        ? 'नमस्ते! मैं बायोसेन्स एआई सहायक हूँ। अपने पशुओं के स्वास्थ्य के बारे में कुछ भी पूछें। मैं हिंदी में भी जवाब दूंगा! 🐄'
-        : "Hello! I'm BioSense AI, your smart livestock health assistant. Ask me anything about your cattle's health, sensor readings, or farm advice. I understand Hindi and Tamil too! 🐄",
+      text: welcomeMsg,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
-    setChatHistory([]); // reset history on language change
+    setChatHistory([]);
   }, [language]);
 
-  // ── Auto-scroll ───────────────────────────────────────────────────────────────
+  // ── Auto-scroll ───────────────────────────────────────────────────────────
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
 
-  // ── Speech Recognition ────────────────────────────────────────────────────────
+  // ── Setup Speech Recognition ──────────────────────────────────────────────
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
+
     const rec = new SpeechRecognition();
     rec.continuous = false;
     rec.interimResults = false;
     rec.lang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : 'en-US';
-    rec.onstart  = () => setIsListening(true);
-    rec.onend    = () => setIsListening(false);
+
+    rec.onstart = () => setIsListening(true);
+    rec.onend = () => setIsListening(false);
     rec.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      setInputText(transcript);
-      handleSend(transcript);
+      const transcript = e.results[0]?.[0]?.transcript;
+      if (transcript) {
+        setInputText(transcript);
+        handleSend(transcript);
+      }
     };
-    rec.onerror = () => setIsListening(false);
+    rec.onerror = (err) => {
+      console.warn('Speech recognition error:', err);
+      setIsListening(false);
+    };
+
     recognitionRef.current = rec;
+
+    return () => {
+      try {
+        rec.abort();
+      } catch (_) {}
+    };
   }, [language]);
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert('Speech recognition is not supported. Please use Google Chrome.');
+      alert(t(
+        'Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.',
+        'இந்த உலாவியில் குரல் உள்ளீடு ஆதரிக்கப்படவில்லை. Google Chrome அல்லது Edge-ஐப் பயன்படுத்தவும்.',
+        'इस ब्राउज़र में वाक् पहचान समर्थित नहीं है। कृपया Google Chrome या Edge का उपयोग करें।'
+      ));
       return;
     }
-    isListening ? recognitionRef.current.stop() : recognitionRef.current.start();
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      // Cancel speech synthesis if speaking when user starts recording
+      window.speechSynthesis?.cancel();
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.warn('Recognition start error:', err);
+      }
+    }
   };
 
-  // ── Speech Synthesis ──────────────────────────────────────────────────────────
+  // ── Speech Synthesis (Text to Speech) ──────────────────────────────────────
   const speakText = (text) => {
-    if (!speakResponses) return;
-    window.speechSynthesis?.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+    if (!speakResponses || typeof window === 'undefined' || !window.speechSynthesis) return;
+    
+    window.speechSynthesis.cancel();
+    
+    // Clean text of markdown/emojis for cleaner speech
+    const cleanText = text
+      .replace(/[*#_`~>]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const targetLang = language === 'ta' ? 'ta' : language === 'hi' ? 'hi' : 'en';
     utterance.lang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : 'en-US';
-    const voices = window.speechSynthesis?.getVoices() || [];
-    const voice  = voices.find(v => v.lang.startsWith(language === 'ta' ? 'ta' : language === 'hi' ? 'hi' : 'en'));
-    if (voice) utterance.voice = voice;
-    window.speechSynthesis?.speak(utterance);
+
+    // Find best matching voice
+    const availableVoices = voices.length > 0 ? voices : window.speechSynthesis.getVoices();
+    const matchedVoice = availableVoices.find(v => v.lang.toLowerCase().startsWith(targetLang));
+    if (matchedVoice) {
+      utterance.voice = matchedVoice;
+    }
+
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
   };
 
-  // ── Live telemetry context ────────────────────────────────────────────────────
+  // ── Build Live Farm Telemetry Context ─────────────────────────────────────
   const buildCattleContext = () => {
-    if (!cattle || cattle.length === 0) return 'No cattle registered yet.';
+    if (!cattle || cattle.length === 0) return 'No cattle collars registered currently in the system.';
     return cattle.map(c =>
-      `Collar ID ${c.id} | Name: ${c.name}${c.nickname ? ` (${c.nickname})` : ''} | Breed: ${c.breed} | Age: ${c.age} | Status: ${c.status} | Heart Rate: ${c.telemetry.heartRate} BPM | Temperature: ${c.telemetry.temperature}°C | Battery: ${c.telemetry.battery}%`
+      `- Collar ID: ${c.id} | Name: ${c.name}${c.nickname ? ` (${c.nickname})` : ''} | Breed: ${c.breed || 'N/A'} | Status: ${c.status} | Temp: ${c.telemetry?.temperature || 'N/A'}°C | Heart Rate: ${c.telemetry?.heartRate || 'N/A'} BPM | Battery: ${c.telemetry?.battery || 'N/A'}% | Last Update: ${c.telemetry?.timestamp || 'live'}`
     ).join('\n');
   };
 
-  // ── Send to Groq ──────────────────────────────────────────────────────────────
+  // ── Main Chat Send Handler ────────────────────────────────────────────────
   const handleSend = async (textToSend = inputText) => {
-    if (!textToSend.trim() || isThinking) return;
+    const trimmed = textToSend.trim();
+    if (!trimmed || isThinking) return;
 
-    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (!apiKey) {
+    // Read API keys (prioritize Gemini, fallback to Groq)
+    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const groqKey = import.meta.env.VITE_GROQ_API_KEY;
+
+    if (!geminiKey && !groqKey) {
       setMessages(prev => [...prev, {
         sender: 'bot',
-        text: '⚠️ Groq API key not configured. Please add VITE_GROQ_API_KEY to your .env file. Get a free key at console.groq.com',
+        text: '⚠️ AI API key is not configured. Please add VITE_GEMINI_API_KEY to your .env file.',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isError: true,
       }]);
       return;
     }
 
-    const userMessage = {
+    const userMsg = {
       sender: 'user',
-      text: textToSend,
+      text: trimmed,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    setMessages(prev => [...prev, userMsg]);
     setInputText('');
     setIsThinking(true);
 
-    // Enrich user message with live telemetry
-    const enrichedText = `[Live Farm Telemetry]\n${buildCattleContext()}\n\n[User Question]\n${textToSend}`;
+    const enrichedUserPrompt = `[Live Farm Telemetry Context]\n${buildCattleContext()}\n\n[User Message]\n${trimmed}`;
 
-    // Build full conversation for Groq (OpenAI format)
-    const groqMessages = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...chatHistory,
-      { role: 'user', content: enrichedText },
-    ];
+    let responseText = '';
 
     try {
-      const res = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model:       GROQ_MODEL,
-          messages:    groqMessages,
-          temperature: 0.7,
-          max_tokens:  512,
-        }),
-      });
+      // 1. Primary Attempt: Google Gemini API
+      if (geminiKey) {
+        const geminiContents = [
+          ...chatHistory.map(turn => ({
+            role: turn.role === 'user' ? 'user' : 'model',
+            parts: [{ text: turn.text }],
+          })),
+          {
+            role: 'user',
+            parts: [{ text: enrichedUserPrompt }],
+          },
+        ];
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err?.error?.message || `HTTP ${res.status}`);
+        const geminiRes = await fetch(`${GEMINI_API_URL}?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: SYSTEM_PROMPT }],
+            },
+            contents: geminiContents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            },
+          }),
+        });
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        } else {
+          const errData = await geminiRes.json().catch(() => ({}));
+          console.warn('Gemini API returned error:', errData);
+          throw new Error(errData?.error?.message || `Gemini error (HTTP ${geminiRes.status})`);
+        }
+      } 
+      // 2. Fallback Attempt: Groq API
+      else if (groqKey) {
+        const groqMessages = [
+          { role: 'system', content: SYSTEM_PROMPT },
+          ...chatHistory.map(turn => ({
+            role: turn.role === 'user' ? 'user' : 'assistant',
+            content: turn.text,
+          })),
+          { role: 'user', content: enrichedUserPrompt },
+        ];
+
+        const groqRes = await fetch(GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqKey}`,
+          },
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages: groqMessages,
+            temperature: 0.7,
+            max_tokens: 600,
+          }),
+        });
+
+        if (groqRes.ok) {
+          const groqData = await groqRes.json();
+          responseText = groqData.choices?.[0]?.message?.content || '';
+        } else {
+          const err = await groqRes.json().catch(() => ({}));
+          throw new Error(err?.error?.message || `Groq error (HTTP ${groqRes.status})`);
+        }
       }
 
-      const data = await res.json();
-      const responseText = data.choices?.[0]?.message?.content || 'No response received.';
+      if (!responseText) {
+        responseText = language === 'ta'
+          ? 'மன்னிக்கவும், பதிலை உருவாக்குவதில் சிக்கல் ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.'
+          : language === 'hi'
+          ? 'क्षमा करें, प्रतिक्रिया उत्पन्न करने में समस्या हुई। कृपया पुनः प्रयास करें।'
+          : 'Sorry, I could not generate a response. Please try asking again.';
+      }
 
-      // Save to conversation history (without telemetry in user turn to save tokens)
+      // Update multi-turn history
       setChatHistory(prev => [
         ...prev,
-        { role: 'user',      content: textToSend },
-        { role: 'assistant', content: responseText },
+        { role: 'user', text: trimmed },
+        { role: 'model', text: responseText },
       ]);
 
+      // Add bot message
       setMessages(prev => [...prev, {
         sender: 'bot',
-        text:   responseText,
-        time:   new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: responseText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }]);
+
+      // Speak response if voice enabled
       speakText(responseText);
 
     } catch (err) {
-      console.error('Groq error:', err);
+      console.error('AI Chat Error:', err);
       setMessages(prev => [...prev, {
         sender: 'bot',
-        text:   `⚠️ ${err.message}`,
-        time:   new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: `⚠️ ${err.message || 'Connection error with AI service.'}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isError: true,
       }]);
     } finally {
@@ -192,97 +316,170 @@ export default function Chatbot() {
     }
   };
 
+  const handleCopy = (text, idx) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const resetChat = () => {
+    window.speechSynthesis?.cancel();
+    setChatHistory([]);
+    setMessages([{
+      sender: 'bot',
+      text: language === 'ta'
+        ? 'உரையாடல் மீட்டமைக்கப்பட்டது. நான் உங்களுக்கு எப்படி உதவ முடியும்?'
+        : language === 'hi'
+        ? 'बातचीत रीसेट कर दी गई है। मैं आपकी कैसे मदद कर सकता हूँ?'
+        : 'Chat reset. How can I help you and your cattle today?',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }]);
+  };
+
   const quickQuestions = language === 'ta'
     ? [
-        { label: 'காலர் 101 நிலை என்ன?',       query: 'காலர் 101 இன் தற்போதைய நிலை என்ன?' },
-        { label: 'வெப்பநிலை அதிகமாக இருந்தால்?', query: 'மாட்டின் வெப்பநிலை அதிகமாக இருந்தால் என்ன செய்வது?' },
-        { label: 'அவசரநிலையில் என்ன செய்வது?',  query: 'என் மாடு Emergency நிலையில் உள்ளது. என்ன செய்வது?' },
+        { label: 'காலர் 101 நிலை என்ன?',       query: 'காலர் ID 101 இன் தற்போதைய வெப்பநிலை மற்றும் இதயத்துடிப்பு நிலை என்ன?' },
+        { label: 'அதிக காய்ச்சல் சிகிச்சை?',   query: 'மாட்டுக்கு அதிக காய்ச்சல் இருந்தால் உடனடியாக என்ன முதலுதவி சிகிச்சை செய்ய வேண்டும்?' },
+        { label: 'மடிநோய் (Mastitis) தடுப்பது?', query: 'மடிநோய் வராமல் தடுக்க இயற்கை மற்றும் மருத்துவ வழிகள் என்ன?' },
+        { label: 'பால் உற்பத்தி அதிகரிக்க?',    query: 'கால்நடைகளில் ஆரோக்கியமான பால் உற்பத்தியை அதிகரிக்க சிறந்த தீவன மேலாண்மை என்ன?' },
       ]
     : language === 'hi'
     ? [
-        { label: 'कॉलर 101 की स्थिति?',      query: 'कॉलर 101 की वर्तमान स्वास्थ्य स्थिति क्या है?' },
-        { label: 'उच्च तापमान सलाह?',       query: 'मेरी गाय का शरीर का तापमान अधिक है। मुझे क्या करना चाहिए?' },
-        { label: 'आपातकालीन कदम?',         query: 'मेरा एक पशु आपातकालीन स्थिति में है। मुझे तुरंत क्या कदम उठाने चाहिए?' },
+        { label: 'कॉलर 101 स्थिति?',           query: 'कॉलर ID 101 की वर्तमान तापमान और हृदय गति स्थिति क्या है?' },
+        { label: 'तेज बुखार का उपचार?',       query: 'यदि गाय को तेज बुखार हो तो तुरंत क्या प्राथमिक उपचार करना चाहिए?' },
+        { label: 'थनैल (Mastitis) रोकथाम?',   query: 'मस्टाइटिस (थनैल) से बचाव के लिए जैविक और चिकित्सीय उपाय क्या हैं?' },
+        { label: 'दूध उत्पादन बढ़ाना?',        query: 'पशुओं में स्वस्थ दूध उत्पादन बढ़ाने के लिए संतुलित आहार क्या होना चाहिए?' },
       ]
     : [
-        { label: 'Status of Collar 101?',    query: 'What is the current health status of Collar ID 101?' },
-        { label: 'High temperature advice?', query: 'My cattle has a high body temperature. What should I do?' },
-        { label: 'Emergency action steps?',  query: 'One of my cattle is in Emergency status. What immediate steps should I take?' },
+        { label: 'Status of Collar 101?',     query: 'What is the current health and vitals status for Collar ID 101?' },
+        { label: 'High Fever First-Aid?',     query: 'What immediate first-aid steps should I take if a cow has a high body temperature?' },
+        { label: 'Prevent Mastitis?',         query: 'What are the effective organic and medical ways to prevent mastitis in dairy cattle?' },
+        { label: 'Boost Milk Yield?',         query: 'What nutrition and feed management practices optimize healthy milk production?' },
       ];
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
 
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shrink-0">
+      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border border-white/20">
+          <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-inner">
             <Bot size={22} className="text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold font-display">{t('BioSense AI Assistant', 'BioSense AI உதவியாளர்')}</h3>
-              <span className="flex items-center gap-1 text-[9px] font-bold bg-white/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                <Sparkles size={9} />
-                Llama 3.3
+              <h3 className="font-bold font-display text-base text-white tracking-tight">
+                {t('BioSense AI Assistant', 'BioSense AI உதவியாளர்', 'बायोसेन्स एआई सहायक')}
+              </h3>
+              <span className="flex items-center gap-1 text-[10px] font-bold bg-white/25 backdrop-blur-md px-2 py-0.5 rounded-full uppercase tracking-wider text-emerald-50 border border-white/20">
+                <Sparkles size={10} className="text-amber-300" />
+                Gemini 2.5
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
               <span className="text-[10px] text-emerald-100 font-semibold uppercase tracking-wider">
-                {t('AI Powered · Voice Enabled', 'AI இயக்கம் · குரல் வசதி')}
+                {t('Live Telemetry · Voice Enabled', 'நேரலை அளவீடு · குரல் வசதி', 'लाइव टेलीमेट्री · वॉइस सक्षम')}
               </span>
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setSpeakResponses(!speakResponses)}
-          className={`p-2 rounded-xl transition-all ${speakResponses ? 'bg-white/20 text-white' : 'bg-slate-800/40 text-slate-300'}`}
-          title={speakResponses ? 'Mute Voice' : 'Unmute Voice'}
-        >
-          {speakResponses ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
+
+        {/* Header Actions */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={resetChat}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-sm"
+            title={t('Reset Conversation', 'உரையாடலை மீட்டமை', 'बातचीत रीसेट करें')}
+          >
+            <RotateCcw size={16} />
+          </button>
+          <button
+            onClick={() => {
+              const nextState = !speakResponses;
+              setSpeakResponses(nextState);
+              if (!nextState) window.speechSynthesis?.cancel();
+            }}
+            className={`p-2 rounded-xl transition-all ${
+              speakResponses ? 'bg-white/25 text-white shadow-sm' : 'bg-slate-900/40 text-slate-300'
+            }`}
+            title={speakResponses ? t('Mute Voice Responses', 'குரலை முடக்கு', 'आवाज म्यूट करें') : t('Enable Voice Responses', 'குரலை இயக்கு', 'आवाज सक्षम करें')}
+          >
+            {speakResponses ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+        </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/50 dark:bg-slate-950/40">
+      {/* Messages Scroll Area */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/60 dark:bg-slate-950/40">
         {messages.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className="max-w-[85%] flex gap-2.5 items-start">
+          <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-300`}>
+            <div className="max-w-[88%] md:max-w-[80%] flex gap-2.5 items-start group">
               {msg.sender === 'bot' && (
-                <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20 text-emerald-500 mt-0.5">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center shrink-0 text-white shadow-sm mt-0.5">
                   <Bot size={16} />
                 </div>
               )}
-              <div
-                className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                  msg.sender === 'user'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-none'
-                    : msg.isError
-                    ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 rounded-tl-none'
-                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700/60 rounded-tl-none'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{msg.text}</p>
-                <span className={`text-[9px] block text-right mt-1.5 font-medium ${msg.sender === 'user' ? 'text-emerald-100' : 'text-slate-400 dark:text-slate-500'}`}>
-                  {msg.time}
-                </span>
+              
+              <div className="flex flex-col">
+                <div
+                  className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm transition-all ${
+                    msg.sender === 'user'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-none'
+                      : msg.isError
+                      ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 rounded-tl-none'
+                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700/70 rounded-tl-none'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                </div>
+
+                {/* Message Meta Info & Action Buttons */}
+                <div className={`flex items-center gap-2 mt-1 px-1 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                    {msg.time}
+                  </span>
+
+                  {msg.sender === 'bot' && !msg.isError && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                      <button
+                        onClick={() => handleCopy(msg.text, idx)}
+                        className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded transition-colors"
+                        title="Copy text"
+                      >
+                        {copiedIndex === idx ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      </button>
+                      <button
+                        onClick={() => speakText(msg.text)}
+                        className="p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded transition-colors"
+                        title="Listen to this response"
+                      >
+                        <Volume2 size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         ))}
 
-        {/* Thinking dots */}
+        {/* AI Thinking Animation */}
         {isThinking && (
-          <div className="flex justify-start">
+          <div className="flex justify-start animate-in fade-in duration-300">
             <div className="flex gap-2.5 items-center">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20 text-emerald-500">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0 border border-emerald-500/30 text-emerald-500">
                 <Bot size={16} />
               </div>
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-1.5 shadow-sm">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/70 rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-2 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  {t('Gemini is analyzing...', 'Gemini பகுப்பாய்வு செய்கிறது...', 'Gemini विश्लेषण कर रहा है...')}
+                </span>
+                <span className="flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </span>
               </div>
             </div>
           </div>
@@ -291,34 +488,48 @@ export default function Chatbot() {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Quick Questions */}
-      <div className="px-4 py-2.5 bg-slate-100/50 dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800 flex flex-wrap gap-1.5 items-center shrink-0">
-        <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 font-semibold uppercase tracking-wider">
-          <HelpCircle size={12} />
-          {t('Suggestions:', 'பரிந்துரைகள்:')}
+      {/* Suggested Quick Questions */}
+      <div className="px-4 py-2.5 bg-slate-100/70 dark:bg-slate-900 border-t border-slate-200/70 dark:border-slate-800 flex flex-wrap gap-1.5 items-center shrink-0">
+        <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1 font-bold uppercase tracking-wider">
+          <HelpCircle size={12} className="text-emerald-500" />
+          {t('Suggestions:', 'பரிந்துரைகள்:', 'सुझाव:')}
         </span>
         {quickQuestions.map((q, idx) => (
           <button
             key={idx}
             onClick={() => handleSend(q.query)}
-            disabled={isThinking}
-            className="text-[11px] font-medium bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-full transition-all disabled:opacity-50"
+            disabled={isThinking || isListening}
+            className="text-[11px] font-medium bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-full transition-all disabled:opacity-50 shadow-2xs hover:scale-[1.02] active:scale-95"
           >
             {q.label}
           </button>
         ))}
       </div>
 
-      {/* Input */}
+      {/* Live Listening Indicator Bar (if active) */}
+      {isListening && (
+        <div className="px-4 py-2 bg-rose-500 text-white text-xs font-semibold flex items-center justify-between animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+            <span>{t('Listening to your voice... Speak now in your language', 'உங்கள் குரலைக் கேட்கிறது... இப்போது பேசவும்', 'आपकी आवाज सुन रहा है... अब बोलें')}</span>
+          </div>
+          <button onClick={toggleListening} className="underline hover:text-rose-100 text-[11px]">
+            {t('Stop', 'நிறுத்து', 'रोकें')}
+          </button>
+        </div>
+      )}
+
+      {/* Input Bar */}
       <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0">
+        {/* Voice Input Button */}
         <button
           onClick={toggleListening}
           className={`p-3 rounded-xl transition-all relative shrink-0 ${
             isListening
-              ? 'bg-rose-500 text-white animate-pulse'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200'
+              ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 ring-2 ring-rose-300'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-slate-750'
           }`}
-          title={isListening ? 'Stop listening' : 'Voice Input'}
+          title={isListening ? t('Stop Listening', 'நிறுத்து', 'रोकें') : t('Voice Input (Click to speak)', 'குரல் உள்ளீடு (பேச கிளிக் செய்யவும்)', 'वॉइस इनपुट (बोलने के लिए क्लिक करें)')}
         >
           {isListening ? (
             <>
@@ -330,24 +541,28 @@ export default function Chatbot() {
           )}
         </button>
 
+        {/* Text Input */}
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyPress}
           placeholder={
-            isListening  ? t('Listening...', 'கேட்கிறது...', 'सुन रहा है...')
-            : isThinking ? t('AI is thinking...', 'AI யோசிக்கிறது...', 'AI सोच रहा है...')
-            : t('Ask anything about your livestock...', 'உங்கள் மாடுகளைப் பற்றி கேளுங்கள்...', 'अपने पशुओं के बारे में कुछ भी पूछें...')
+            isListening
+              ? t('Listening to your speech...', 'உங்கள் பேச்சைக் கேட்கிறது...', 'आपकी बात सुन रहा है...')
+              : isThinking
+              ? t('AI is thinking...', 'AI யோசிக்கிறது...', 'AI सोच रहा है...')
+              : t('Ask anything about your livestock, symptoms, vitals...', 'உங்கள் கால்நடைகள், அறிகுறிகள் பற்றி கேட்கவும்...', 'अपने पशुओं, लक्षणों, विटल्स के बारे में पूछें...')
           }
           disabled={isListening || isThinking}
-          className="flex-1 bg-slate-50 dark:bg-slate-850 dark:text-slate-100 border border-slate-200 dark:border-slate-750 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 disabled:opacity-60 transition-all"
+          className="flex-1 bg-slate-50 dark:bg-slate-850 dark:text-slate-100 border border-slate-200 dark:border-slate-750 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60 transition-all placeholder:text-slate-400"
         />
 
+        {/* Send Button */}
         <button
           onClick={() => handleSend()}
-          disabled={isThinking || !inputText.trim()}
-          className="p-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-md shadow-emerald-700/10 hover:shadow-lg hover:shadow-emerald-700/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          disabled={isThinking || isListening || !inputText.trim()}
+          className="p-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-md shadow-emerald-700/15 hover:shadow-lg hover:shadow-emerald-700/25 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
           title="Send"
         >
           <Send size={18} />
