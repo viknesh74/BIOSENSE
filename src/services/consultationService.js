@@ -37,10 +37,56 @@ let _localConsultations = [
   }
 ];
 
+let _localAppointments = [
+  {
+    id: 'apt-101-1',
+    farmerId: 'farmer-uma',
+    farmerName: 'Uma',
+    farmerPhone: '+91 98765 43210',
+    collarId: '101',
+    animalName: 'Meenu',
+    animalBreed: 'Gir (Desi)',
+    vetName: 'Dr. Rajesh Kannan',
+    vetHospital: 'Madurai East Government Veterinary Hospital',
+    appointmentType: 'Farm Doorstep Visit',
+    preferredDate: '2026-10-14',
+    preferredTimeSlot: 'Morning (09:00 AM - 12:00 PM)',
+    urgency: 'Normal',
+    reason: 'Routine quarterly lactation vital audit and ultrasound checkup.',
+    status: 'Confirmed',
+    bookedAt: '2026-10-08',
+    doctorNotes: 'Scheduled for morning farm route visit.'
+  },
+  {
+    id: 'apt-102-1',
+    farmerId: 'farmer-uma',
+    farmerName: 'Uma',
+    farmerPhone: '+91 98765 43210',
+    collarId: '102',
+    animalName: 'Ganga',
+    animalBreed: 'Jersey',
+    vetName: 'Dr. Rajesh Kannan',
+    vetHospital: 'Madurai East Government Veterinary Hospital',
+    appointmentType: 'Live Tele-Consultation',
+    preferredDate: '2026-10-10',
+    preferredTimeSlot: 'Afternoon (02:00 PM - 05:00 PM)',
+    urgency: 'Urgent',
+    reason: 'Review thermal spikes (39.1°C) and vital warning trends on collar sensor.',
+    status: 'Pending',
+    bookedAt: '2026-10-09',
+    doctorNotes: 'Awaiting doctor confirmation.'
+  }
+];
+
 let _localListeners = [];
+let _localAppointmentListeners = [];
 
 function _notifyLocal() {
   _localListeners.forEach((cb) => cb([..._localConsultations]));
+}
+
+function _notifyAppointmentListeners() {
+  _localAppointmentListeners.forEach((cb) => cb([..._localAppointments]));
 }
 
 export function subscribeToConsultations(farmerId, callback) {
@@ -59,13 +105,20 @@ export function subscribeToConsultations(farmerId, callback) {
 
   return onSnapshot(q, (snapshot) => {
     const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    // Show local fallback if Firestore is empty
     callback(data.length > 0 ? data : _localConsultations);
   }, (error) => {
     console.warn("Consultations Firestore error (using local):", error.message);
     _localListeners.push(callback);
     callback([..._localConsultations]);
   });
+}
+
+export function subscribeToAppointments(farmerId, callback) {
+  _localAppointmentListeners.push(callback);
+  callback([..._localAppointments]);
+  return () => {
+    _localAppointmentListeners = _localAppointmentListeners.filter((cb_) => cb_ !== callback);
+  };
 }
 
 export async function sendConsultationMessage(consultationId, sender, text) {
@@ -75,7 +128,6 @@ export async function sendConsultationMessage(consultationId, sender, text) {
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   };
 
-  // Update local state immediately for instant UI feedback
   _localConsultations = _localConsultations.map((c) =>
     c.id === consultationId ? { ...c, messages: [...c.messages, message] } : c
   );
@@ -129,4 +181,28 @@ export async function createConsultation(data) {
     console.warn('createConsultation error:', e.message);
     return newConsultation;
   }
+}
+
+export async function bookAppointment(data) {
+  const newAppointment = {
+    id: `apt-${Date.now()}`,
+    status: 'Pending',
+    bookedAt: new Date().toISOString().split('T')[0],
+    doctorNotes: 'Awaiting veterinarian confirmation.',
+    ...data
+  };
+
+  _localAppointments = [newAppointment, ..._localAppointments];
+  _notifyAppointmentListeners();
+  return newAppointment;
+}
+
+export async function updateAppointmentStatus(appointmentId, status, doctorNotes = '') {
+  _localAppointments = _localAppointments.map((a) =>
+    a.id === appointmentId
+      ? { ...a, status, doctorNotes: doctorNotes || a.doctorNotes }
+      : a
+  );
+  _notifyAppointmentListeners();
+  return _localAppointments.find((a) => a.id === appointmentId);
 }

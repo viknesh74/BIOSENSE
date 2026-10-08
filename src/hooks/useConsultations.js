@@ -10,9 +10,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   subscribeToConsultations,
+  subscribeToAppointments,
   sendConsultationMessage,
   addPrescription,
-  createConsultation as createConsultationService
+  createConsultation as createConsultationService,
+  bookAppointment as bookAppointmentService,
+  updateAppointmentStatus as updateAppointmentStatusService
 } from '../services/consultationService';
 
 /**
@@ -20,31 +23,31 @@ import {
  */
 export function useConsultations(farmerId = 'farmer-uma') {
   const [consultations, setConsultations] = useState([]);
+  const [appointments, setAppointments] = useState([]);
 
   // Subscribe to real-time consultation updates
   useEffect(() => {
-    const unsubscribe = subscribeToConsultations(farmerId, (data) => {
+    const unsubscribeConsult = subscribeToConsultations(farmerId, (data) => {
       setConsultations(data);
     });
-    return unsubscribe;
+    const unsubscribeApt = subscribeToAppointments(farmerId, (data) => {
+      setAppointments(data);
+    });
+    return () => {
+      if (unsubscribeConsult) unsubscribeConsult();
+      if (unsubscribeApt) unsubscribeApt();
+    };
   }, [farmerId]);
 
   /**
    * Send a message in a consultation thread.
-   * @param {string} consultationId
-   * @param {string} sender  — 'farmer' | 'doctor'
-   * @param {string} text
    */
   const sendMessage = useCallback(async (consultationId, sender, text) => {
     await sendConsultationMessage(consultationId, sender, text);
   }, []);
 
   /**
-   * Doctor adds a prescription — marks consultation as 'Prescribed'
-   * and triggers a farmer notification (handled in AppContext via alertService).
-   *
-   * @param {string} consultationId
-   * @param {Array}  rxMedicines
+   * Doctor adds a prescription
    */
   const prescribe = useCallback(async (consultationId, rxMedicines) => {
     await addPrescription(consultationId, rxMedicines);
@@ -52,7 +55,6 @@ export function useConsultations(farmerId = 'farmer-uma') {
 
   /**
    * Farmer opens a new consultation request.
-   * @param {Object} data  — { collarId, animalName, farmerName, symptoms }
    */
   const createConsultation = useCallback(
     async (data) => {
@@ -61,5 +63,33 @@ export function useConsultations(farmerId = 'farmer-uma') {
     [farmerId]
   );
 
-  return { consultations, sendMessage, prescribe, createConsultation };
+  /**
+   * Farmer books an appointment with a nearby vet/clinic.
+   */
+  const bookAppointment = useCallback(
+    async (data) => {
+      return await bookAppointmentService({ ...data, farmerId });
+    },
+    [farmerId]
+  );
+
+  /**
+   * Doctor or Farmer updates appointment status (e.g. Confirmed, Completed, Cancelled).
+   */
+  const updateAppointmentStatus = useCallback(
+    async (appointmentId, status, notes) => {
+      return await updateAppointmentStatusService(appointmentId, status, notes);
+    },
+    []
+  );
+
+  return { 
+    consultations, 
+    appointments, 
+    sendMessage, 
+    prescribe, 
+    createConsultation, 
+    bookAppointment, 
+    updateAppointmentStatus 
+  };
 }

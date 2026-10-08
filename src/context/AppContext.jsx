@@ -99,12 +99,15 @@ export const AppProvider = ({ children }) => {
   // Alerts / Notifications
   const { notifications, markRead, markAllRead, clearAlerts } = useAlerts(farmerId);
 
-  // Consultations
+  // Consultations & Appointments
   const {
     consultations,
+    appointments,
     sendConsultationMessage,
     prescribe: prescribeFromService,
-    createConsultation
+    createConsultation,
+    bookAppointment: bookAppointmentFromService,
+    updateAppointmentStatus: updateAppointmentStatusFromService
   } = useConsultations(farmerId);
 
   // Live telemetry — feeds back into cattle state via syncTelemetry
@@ -149,6 +152,46 @@ export const AppProvider = ({ children }) => {
   );
 
   /**
+   * Book appointment wrapper with farmer & doctor notifications
+   */
+  const bookAppointment = useCallback(
+    async (appointmentData) => {
+      const newApt = await bookAppointmentFromService(appointmentData);
+      
+      await pushAlert({
+        collarId: newApt.collarId,
+        farmerId,
+        title: 'Veterinary Appointment Booked',
+        message: `Appointment request sent to ${newApt.vetName} for ${newApt.animalName} on ${newApt.preferredDate}.`,
+        type: 'info'
+      });
+
+      return newApt;
+    },
+    [bookAppointmentFromService, farmerId]
+  );
+
+  /**
+   * Update appointment status wrapper
+   */
+  const updateAppointmentStatus = useCallback(
+    async (appointmentId, status, notes) => {
+      const updated = await updateAppointmentStatusFromService(appointmentId, status, notes);
+      
+      await pushAlert({
+        collarId: updated?.collarId || '101',
+        farmerId,
+        title: `Appointment ${status}`,
+        message: `Dr. Rajesh Kannan marked your appointment as ${status}. ${notes ? `Notes: ${notes}` : ''}`,
+        type: status === 'Confirmed' ? 'success' : 'info'
+      });
+
+      return updated;
+    },
+    [updateAppointmentStatusFromService, farmerId]
+  );
+
+  /**
    * Doctor prescribes medicines → pushes a notification to farmer.
    */
   const prescribe = useCallback(
@@ -169,9 +212,9 @@ export const AppProvider = ({ children }) => {
 
   // ─── Translation helper ───────────────────────────────────────────────────
   const t = useCallback(
-    (keyEn, keyTa) => {
-      if (language === 'ta') return keyTa;
-      if (language === 'hi') return hindiDictionary[keyEn] || keyEn;
+    (keyEn, keyTa, keyHi) => {
+      if (language === 'ta') return keyTa || keyEn;
+      if (language === 'hi') return keyHi || hindiDictionary[keyEn] || keyEn;
       return keyEn;
     },
     [language]
@@ -221,12 +264,15 @@ export const AppProvider = ({ children }) => {
         markAllRead,
         clearAlerts,
 
-        // Consultations (from useConsultations)
+        // Consultations & Appointments (from useConsultations)
         consultations,
+        appointments,
         setConsultations: () => {}, // no-op shim for backward compatibility
         prescribe,
         sendConsultationMessage,
         createConsultation,
+        bookAppointment,
+        updateAppointmentStatus,
 
         // AI Chatbot (local state)
         chatbotMessages,
