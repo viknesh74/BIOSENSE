@@ -94,3 +94,57 @@ export async function updateCattleMetadata(collarId, updates) {
   try { await updateDoc(doc(db, 'cattle', collarId), updates); }
   catch (e) { console.warn('updateCattleMetadata error:', e.message); }
 }
+
+export async function addVaccinationRecord(collarId, record) {
+  const newRecord = {
+    id: record.id || `vac-${collarId}-${Date.now()}`,
+    dateAdministered: record.dateAdministered || new Date().toISOString().split('T')[0],
+    ...record
+  };
+  _fallbackCattle = _fallbackCattle.map((c) => {
+    if (c.id === collarId) {
+      return {
+        ...c,
+        vaccinations: [newRecord, ...(c.vaccinations || [])]
+      };
+    }
+    return c;
+  });
+  return newRecord;
+}
+
+export async function addMedicalTreatmentRecord(collarId, record) {
+  const newRecord = {
+    id: record.id || `med-${collarId}-${Date.now()}`,
+    date: record.date || new Date().toISOString().split('T')[0],
+    ...record
+  };
+  _fallbackCattle = _fallbackCattle.map((c) => {
+    if (c.id === collarId) {
+      return {
+        ...c,
+        medicalTreatments: [newRecord, ...(c.medicalTreatments || [])]
+      };
+    }
+    return c;
+  });
+  return newRecord;
+}
+
+export async function addHealthMonitoringRecord(collarId, record) {
+  const newRecord = {
+    id: record.id || `hm-${collarId}-${Date.now()}`,
+    date: record.date || new Date().toISOString().split('T')[0],
+    ...record
+  };
+  _fallbackCattle = _fallbackCattle.map((c) => {
+    if (c.id === collarId) {
+      return {
+        ...c,
+        healthMonitoringHistory: [newRecord, ...(c.healthMonitoringHistory || [])]
+      };
+    }
+    return c;
+  });
+  return newRecord;
+}

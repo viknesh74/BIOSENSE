@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Plus, ArrowRight, ShieldAlert, Heart, Battery, Compass, ChevronRight, Activity, Thermometer } from 'lucide-react';
+import { Plus, ArrowRight, ShieldAlert, Heart, Battery, Compass, ChevronRight, Activity, Thermometer, Pill, ShieldCheck } from 'lucide-react';
 
 export default function FarmerDashboard() {
   const { cattle, addCollar, setSelectedCattleId, setActiveTab, t } = useContext(AppContext);
@@ -99,16 +99,26 @@ export default function FarmerDashboard() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setErrorMsg('');
-            setShowAddModal(true);
-          }}
-          className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-md shadow-emerald-700/10 hover:shadow-lg active:scale-98 transition-all cursor-pointer text-sm"
-        >
-          <Plus size={18} />
-          <span>{t('Add New Collar', 'புதிய காலர் சேர்')}</span>
-        </button>
+        <div className="flex flex-wrap gap-2.5">
+          <button
+            onClick={() => setActiveTab('medical-records')}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 font-bold rounded-xl shadow-xs transition-all cursor-pointer text-sm"
+          >
+            <Pill size={16} className="text-teal-500" />
+            <span>{t('Vaccines & Medical Storage', 'தடுப்பூசி & மருத்துவ பதிவுகள்', 'टीकाकरण और चिकित्सा')}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setErrorMsg('');
+              setShowAddModal(true);
+            }}
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-md shadow-emerald-700/10 hover:shadow-lg active:scale-98 transition-all cursor-pointer text-sm"
+          >
+            <Plus size={18} />
+            <span>{t('Add New Collar', 'புதிய காலர் சேர்')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary Vitals Banner */}

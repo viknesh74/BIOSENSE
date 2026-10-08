@@ -90,6 +90,9 @@ export const AppProvider = ({ children }) => {
     setCattle,
     addCollar: addCollarFromService,
     removeCollar,
+    addVaccination,
+    addMedicalTreatment,
+    addHealthMonitoring,
     loading: cattleLoading
   } = useCattle(farmerId);
 
@@ -206,6 +209,9 @@ export const AppProvider = ({ children }) => {
         setCattle,
         addCollar,
         removeCollar,
+        addVaccination,
+        addMedicalTreatment,
+        addHealthMonitoring,
         cattleLoading,
 
         // Notifications (from useAlerts)

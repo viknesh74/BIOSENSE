@@ -13,6 +13,7 @@ import {
   Bot,
   Stethoscope,
   Heart,
+  Pill,
   Camera,
   ChevronLeft,
   ChevronRight,
@@ -49,6 +50,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const farmerNavItems = [
     { id: 'dashboard', label: t('Dashboard', 'கட்டுப்பாட்டு அறை'), icon: LayoutDashboard },
     { id: 'cattle-details', label: t('Cattle Details', 'மாட்டின் விவரங்கள்'), icon: Heart },
+    { id: 'medical-records', label: t('Vaccines & Medical', 'தடுப்பூசி & மருத்துவம்', 'टीकाकरण और चिकित्सा'), icon: Pill },
     { id: 'analytics', label: t('Health Analytics', 'சுகாதார பகுப்பாய்வு'), icon: Activity },
     { id: 'gps', label: t('Live GPS Tracking', 'ஜிபிஎஸ் கண்காணிப்பு'), icon: MapPin },
     { id: 'alerts', label: t('Alerts & Notifications', 'எச்சரிக்கைகள்'), icon: AlertTriangle, badge: unreadAlertsCount },

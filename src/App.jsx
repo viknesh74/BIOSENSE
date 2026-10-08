@@ -14,6 +14,7 @@ import GPSTracking from './pages/GPSTracking';
 import Alerts from './pages/Alerts';
 import GovernmentSchemes from './pages/GovernmentSchemes';
 import VeterinaryServices from './pages/VeterinaryServices';
+import MedicalRecords from './pages/MedicalRecords';
 import Chatbot from './components/Chatbot';
 import DoctorDashboard from './pages/DoctorDashboard';
 import Consultation from './pages/Consultation';
@@ -58,6 +59,8 @@ export default function App() {
         return <FarmerDashboard />;
       case 'cattle-details':
         return <CattleDetails />;
+      case 'medical-records':
+        return <MedicalRecords />;
       case 'analytics':
         return <HerdAnalytics />;
       case 'cattle-analytics':

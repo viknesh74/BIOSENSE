@@ -9,7 +9,14 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCattle, addCattle, deleteCattle } from '../services/cattleService';
+import { 
+  getCattle, 
+  addCattle, 
+  deleteCattle,
+  addVaccinationRecord as addVacService,
+  addMedicalTreatmentRecord as addMedService,
+  addHealthMonitoringRecord as addHmService
+} from '../services/cattleService';
 
 /**
  * @param {string} farmerId  — e.g. 'farmer-uma'
@@ -41,8 +48,6 @@ export function useCattle(farmerId = 'farmer-uma') {
 
   /**
    * Register a new collar and update local state.
-   * @param {Object} collarData
-   * @returns {Promise<Object>}  — the created cattle record
    */
   const addCollar = useCallback(
     async (collarData) => {
@@ -55,7 +60,6 @@ export function useCattle(farmerId = 'farmer-uma') {
 
   /**
    * Remove a collar and update local state.
-   * @param {string} collarId
    */
   const removeCollar = useCallback(async (collarId) => {
     await deleteCattle(collarId);
@@ -63,13 +67,67 @@ export function useCattle(farmerId = 'farmer-uma') {
   }, []);
 
   /**
+   * Add a vaccination record to a specific cattle.
+   */
+  const addVaccination = useCallback(async (collarId, record) => {
+    const newRecord = await addVacService(collarId, record);
+    setCattle((prev) =>
+      prev.map((c) =>
+        c.id === collarId
+          ? { ...c, vaccinations: [newRecord, ...(c.vaccinations || [])] }
+          : c
+      )
+    );
+    return newRecord;
+  }, []);
+
+  /**
+   * Add a medical treatment record to a specific cattle.
+   */
+  const addMedicalTreatment = useCallback(async (collarId, record) => {
+    const newRecord = await addMedService(collarId, record);
+    setCattle((prev) =>
+      prev.map((c) =>
+        c.id === collarId
+          ? { ...c, medicalTreatments: [newRecord, ...(c.medicalTreatments || [])] }
+          : c
+      )
+    );
+    return newRecord;
+  }, []);
+
+  /**
+   * Add a health monitoring checkup log.
+   */
+  const addHealthMonitoring = useCallback(async (collarId, record) => {
+    const newRecord = await addHmService(collarId, record);
+    setCattle((prev) =>
+      prev.map((c) =>
+        c.id === collarId
+          ? { ...c, healthMonitoringHistory: [newRecord, ...(c.healthMonitoringHistory || [])] }
+          : c
+      )
+    );
+    return newRecord;
+  }, []);
+
+  /**
    * Update the live telemetry for a specific collar in local state.
-   * Called by useTelemetry when new sensor data arrives.
-   * @param {Array} updatedCattle
    */
   const syncTelemetry = useCallback((updatedCattle) => {
     setCattle(updatedCattle);
   }, []);
 
-  return { cattle, setCattle, addCollar, removeCollar, syncTelemetry, loading, error };
+  return { 
+    cattle, 
+    setCattle, 
+    addCollar, 
+    removeCollar, 
+    addVaccination,
+    addMedicalTreatment,
+    addHealthMonitoring,
+    syncTelemetry, 
+    loading, 
+    error 
+  };
 }
