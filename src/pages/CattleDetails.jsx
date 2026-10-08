@@ -134,19 +134,13 @@ export default function CattleDetails() {
                   </div>
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div>
-<<<<<<< HEAD
-                      <div className="flex justify-between items-start">
+<div className="flex justify-between items-start">
                         <h3 className="text-xl font-black text-slate-900 dark:text-white font-display mb-1">{cow.name}</h3>
                         <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-bold text-slate-500">
                           {vacCount} {t('Vaccines', 'தடுப்பூசி', 'टीके')}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 font-bold">{cow.breed} • {cow.age}</p>
-=======
-                      <h3 className="text-xl font-black text-slate-900 dark:text-white font-display mb-1">{cow.name}</h3>
-                      <p className="text-xs text-slate-500 font-bold">{t(cow.breed)} • {cow.age}</p>
->>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
-                    </div>
+                      <p className="text-xs text-slate-500 font-bold">{t(cow.breed)} • {cow.age}</p>                    </div>
                     
                     <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                       <div className={`flex items-center gap-1.5 text-xs font-bold ${

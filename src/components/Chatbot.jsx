@@ -42,31 +42,7 @@ export default function Chatbot() {
 
   // ── Load Speech Synthesis Voices ──────────────────────────────────────────
   useEffect(() => {
-<<<<<<< HEAD
-    const updateVoices = () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        setVoices(window.speechSynthesis.getVoices() || []);
-      }
-    };
-    updateVoices();
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = updateVoices;
-    }
-  }, []);
-
-  // ── Welcome Message on Language Change ────────────────────────────────────
-  useEffect(() => {
-    const welcomeMsg = language === 'ta'
-      ? 'வணக்கம்! நான் BioSense AI உதவியாளர். மைக் மூலம் பேசவோ அல்லது தட்டச்சு செய்யவோ செய்து உங்கள் கால்நடைகள் பற்றி கேளுங்கள். பதில் உடனடியாக உரையாகத் தோன்றும்! 🐄'
-      : language === 'hi'
-      ? 'नमस्ते! मैं बायोसेन्स एआई सहायक हूँ। माइक से बोलकर या लिखकर अपने पशुओं के स्वास्थ्य के बारे में पूछें। उत्तर तुरंत टेक्स्ट के रूप में मिलेगा! 🐄'
-      : "Hello! I'm BioSense AI, your smart livestock assistant powered by Google Gemini. Speak into the mic or type your question, and I'll give you instant text answers! 🐄";
-
-    setMessages([{
-      sender: 'bot',
-      text: welcomeMsg,
-=======
-    let welcomeText = "Hello! I'm BioSense AI, your smart livestock health assistant. Ask me anything about your cattle's health, sensor readings, or farm advice. 🐄";
+let welcomeText = "Hello! I'm BioSense AI, your smart livestock health assistant. Ask me anything about your cattle's health, sensor readings, or farm advice. 🐄";
     if (language === 'ta') {
       welcomeText = 'வணக்கம்! நான் BioSense AI உதவியாளர். உங்கள் கால்நடைகளின் உடல்நிலை, வெப்பநிலை, இதயத்துடிப்பு பற்றி எந்த கேள்வியும் கேளுங்கள். நான் தமிழிலும் பதில் சொல்வேன்! 🐄';
     } else if (language === 'hi') {
@@ -80,7 +56,6 @@ export default function Chatbot() {
     setMessages([{
       sender: 'bot',
       text: welcomeText,
->>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
     setChatHistory([]);
@@ -99,13 +74,7 @@ export default function Chatbot() {
     const rec = new SpeechRecognition();
     rec.continuous = false;
     rec.interimResults = false;
-<<<<<<< HEAD
-    rec.lang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : 'en-US';
-
-    rec.onstart = () => setIsListening(true);
-    rec.onend = () => setIsListening(false);
-=======
-    const langLocaleMap = {
+const langLocaleMap = {
       ta: 'ta-IN',
       hi: 'hi-IN',
       ml: 'ml-IN',
@@ -115,7 +84,6 @@ export default function Chatbot() {
     rec.lang = langLocaleMap[language] || 'en-US';
     rec.onstart  = () => setIsListening(true);
     rec.onend    = () => setIsListening(false);
->>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
     rec.onresult = (e) => {
       const transcript = e.results[0]?.[0]?.transcript;
       if (transcript) {
@@ -162,33 +130,7 @@ export default function Chatbot() {
 
   // ── Speech Synthesis (Text to Speech) ──────────────────────────────────────
   const speakText = (text) => {
-<<<<<<< HEAD
-    if (!speakResponses || typeof window === 'undefined' || !window.speechSynthesis) return;
-    
-    window.speechSynthesis.cancel();
-    
-    // Clean text of markdown/emojis for cleaner speech
-    const cleanText = text
-      .replace(/[*#_`~>]/g, '')
-      .replace(/https?:\/\/\S+/g, '')
-      .trim();
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    const targetLang = language === 'ta' ? 'ta' : language === 'hi' ? 'hi' : 'en';
-    utterance.lang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : 'en-US';
-
-    // Find best matching voice
-    const availableVoices = voices.length > 0 ? voices : window.speechSynthesis.getVoices();
-    const matchedVoice = availableVoices.find(v => v.lang.toLowerCase().startsWith(targetLang));
-    if (matchedVoice) {
-      utterance.voice = matchedVoice;
-    }
-
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    window.speechSynthesis.speak(utterance);
-=======
-    if (!speakResponses) return;
+if (!speakResponses) return;
     window.speechSynthesis?.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     const langLocaleMap = {
@@ -203,7 +145,6 @@ export default function Chatbot() {
     const voice  = voices.find(v => v.lang.startsWith(language));
     if (voice) utterance.voice = voice;
     window.speechSynthesis?.speak(utterance);
->>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
   };
 
   // ── Build Live Farm Telemetry Context ─────────────────────────────────────
