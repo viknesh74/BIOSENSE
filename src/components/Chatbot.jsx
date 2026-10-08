@@ -31,7 +31,7 @@ export default function Chatbot() {
   const [messages, setMessages]                 = useState([]);
   const [inputText, setInputText]               = useState('');
   const [isListening, setIsListening]           = useState(false);
-  const [speakResponses, setSpeakResponses]     = useState(true);
+  const [speakResponses, setSpeakResponses]     = useState(false); // Text-only output by default
   const [isThinking, setIsThinking]             = useState(false);
   const [chatHistory, setChatHistory]           = useState([]); // { role: 'user' | 'model', text: string }
   const [copiedIndex, setCopiedIndex]           = useState(null);
@@ -56,10 +56,10 @@ export default function Chatbot() {
   // ── Welcome Message on Language Change ────────────────────────────────────
   useEffect(() => {
     const welcomeMsg = language === 'ta'
-      ? 'வணக்கம்! நான் BioSense AI உதவியாளர். உங்கள் கால்நடைகளின் உடல்நிலை, வெப்பநிலை, இதயத்துடிப்பு அல்லது ஏதேனும் நோய் அறிகுறிகள் பற்றி கேளுங்கள். நான் குரல் மூலமாகவும் பேசுவேன்! 🐄'
+      ? 'வணக்கம்! நான் BioSense AI உதவியாளர். மைக் மூலம் பேசவோ அல்லது தட்டச்சு செய்யவோ செய்து உங்கள் கால்நடைகள் பற்றி கேளுங்கள். பதில் உடனடியாக உரையாகத் தோன்றும்! 🐄'
       : language === 'hi'
-      ? 'नमस्ते! मैं बायोसेन्स एआई सहायक हूँ। अपने पशुओं के स्वास्थ्य, तापमान, हृदय गति या किसी बीमारी के बारे में कुछ भी पूछें। मैं हिंदी में बोलकर भी उत्तर दूंगा! 🐄'
-      : "Hello! I'm BioSense AI, your smart livestock veterinary assistant powered by Google Gemini. Ask me anything about your herd's health, live sensor readings, or first-aid remedies! 🐄";
+      ? 'नमस्ते! मैं बायोसेन्स एआई सहायक हूँ। माइक से बोलकर या लिखकर अपने पशुओं के स्वास्थ्य के बारे में पूछें। उत्तर तुरंत टेक्स्ट के रूप में मिलेगा! 🐄'
+      : "Hello! I'm BioSense AI, your smart livestock assistant powered by Google Gemini. Speak into the mic or type your question, and I'll give you instant text answers! 🐄";
 
     setMessages([{
       sender: 'bot',
@@ -379,7 +379,7 @@ export default function Chatbot() {
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
               <span className="text-[10px] text-emerald-100 font-semibold uppercase tracking-wider">
-                {t('Live Telemetry · Voice Enabled', 'நேரலை அளவீடு · குரல் வசதி', 'लाइव टेलीमेट्री · वॉइस सक्षम')}
+                {t('Speech-to-Text · AI Text Answers', 'குரல் உள்ளீடு · AI உரை பதில்', 'वॉइस-टू-टेक्स्ट · AI टेक्स्ट उत्तर')}
               </span>
             </div>
           </div>
