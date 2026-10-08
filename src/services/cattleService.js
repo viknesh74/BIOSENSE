@@ -2,34 +2,51 @@ import { db } from './firebase';
 import {
   collection, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where
 } from 'firebase/firestore';
-import { CENTER_LAT, CENTER_LNG, MOCK_CATTLE } from './mockData';
+import { CENTER_LAT, CENTER_LNG, MOCK_CATTLE, STATIC_GPS_LOCATIONS } from './mockData';
 
 // Re-export so other files can still import CENTER_LAT/LNG from here
-export { CENTER_LAT, CENTER_LNG };
+export { CENTER_LAT, CENTER_LNG, STATIC_GPS_LOCATIONS };
 
 // In-memory fallback store (starts with demo data)
 let _fallbackCattle = [...MOCK_CATTLE];
 
 export async function getCattle(farmerId) {
+  const sanitizeCattle = (cattleList) => cattleList.map((c, idx) => {
+    const defaultGps = STATIC_GPS_LOCATIONS[idx % STATIC_GPS_LOCATIONS.length];
+    const cowGps = c.telemetry?.gps;
+    // If GPS is missing or from the old coordinates (around lat 9.9), force to the 3 static coordinates
+    const isValidNewRegion = cowGps && cowGps.lat > 11.0 && cowGps.lat < 11.2 && cowGps.lng > 77.0 && cowGps.lng < 77.3;
+    const finalGps = isValidNewRegion ? cowGps : defaultGps;
+
+    return {
+      ...c,
+      photo: c.photo && c.photo.includes('1546182990-dffeafbe841d') 
+        ? 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=500&auto=format&fit=crop&q=80'
+        : c.photo,
+      telemetry: {
+        ...(c.telemetry || {}),
+        heartRate: c.telemetry?.heartRate || 72,
+        temperature: c.telemetry?.temperature || 38.6,
+        battery: c.telemetry?.battery || 90,
+        gps: finalGps,
+        lastUpdated: 'Live ⚡'
+      }
+    };
+  });
+
   if (!db) {
-    return _fallbackCattle.filter((c) => !farmerId || c.farmerId === farmerId);
+    return sanitizeCattle(_fallbackCattle.filter((c) => !farmerId || c.farmerId === farmerId));
   }
   try {
     const q = query(collection(db, 'cattle'), where('farmerId', '==', farmerId || 'farmer-uma'));
     const snapshot = await getDocs(q);
     const firestoreData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    const sanitizeLions = (cattleList) => cattleList.map(c => ({
-      ...c,
-      photo: c.photo && c.photo.includes('1546182990-dffeafbe841d') 
-        ? 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?w=500&auto=format&fit=crop&q=80'
-        : c.photo
-    }));
 
     // If Firestore is empty, return demo data so the dashboard is never blank
-    return firestoreData.length > 0 ? sanitizeLions(firestoreData) : sanitizeLions(_fallbackCattle);
+    return firestoreData.length > 0 ? sanitizeCattle(firestoreData) : sanitizeCattle(_fallbackCattle);
   } catch (e) {
     console.warn('getCattle error (using fallback):', e.message);
-    return _fallbackCattle;
+    return sanitizeCattle(_fallbackCattle);
   }
 }
 

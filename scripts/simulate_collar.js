@@ -1,7 +1,19 @@
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, '../.env');
 
 // Read .env file manually so we don't need to install dotenv
-const envFile = fs.readFileSync('.env', 'utf-8');
+let envFile;
+try {
+  envFile = fs.readFileSync(envPath, 'utf-8');
+} catch (e) {
+  console.error(`❌ Configuration not found: Could not read .env file at ${envPath}`);
+  process.exit(1);
+}
 const dbUrlMatch = envFile.match(/VITE_FIREBASE_DATABASE_URL=[\'"]?(https?:\/\/[^\'"]+)[\'"]?/);
 const projectIdMatch = envFile.match(/VITE_FIREBASE_PROJECT_ID=[\'"]?([^\'"\r\n]+)[\'"]?/);
 
@@ -14,8 +26,16 @@ const dbUrl = dbUrlMatch[1].replace(/\/$/, ""); // Remove trailing slash
 const projectId = projectIdMatch[1];
 console.log(`✅ Using Database URL: ${dbUrl}`);
 
-const CENTER_LAT = 9.9252;
-const CENTER_LNG = 78.1198;
+const STATIC_LOCATIONS = [
+  { lat: 11.077809, lng: 77.142879 },
+  { lat: 11.077073, lng: 77.142729 },
+  { lat: 11.077788, lng: 77.142827 }
+];
+
+const CENTER_LAT = 11.077809;
+const CENTER_LNG = 77.142879;
+
+let locationIndex = 0;
 
 function getRandomArbitrary(min, max) {
   return Math.random() * (max - min) + min;
@@ -32,7 +52,7 @@ async function getCattleIds() {
     }
     const data = await res.json();
     if (!data.documents) return ['101', '102'];
-    
+
     // Extract the ID from the end of the document name string
     return data.documents.map(doc => {
       const parts = doc.name.split('/');
@@ -45,17 +65,18 @@ async function getCattleIds() {
 
 async function updateTelemetry() {
   const MOCK_CATTLE_IDS = await getCattleIds();
-  
-  for (const id of MOCK_CATTLE_IDS) {
+
+  MOCK_CATTLE_IDS.forEach(async (id, idx) => {
     const isEmergency = Math.random() > 0.90; // 10% chance to spike vitals
+    const targetGps = STATIC_LOCATIONS[(locationIndex + idx) % STATIC_LOCATIONS.length];
 
     const data = {
       heartRate: isEmergency ? Math.floor(getRandomArbitrary(100, 120)) : Math.floor(getRandomArbitrary(65, 85)),
       temperature: isEmergency ? parseFloat(getRandomArbitrary(39.5, 41.0).toFixed(1)) : parseFloat(getRandomArbitrary(38.0, 39.1).toFixed(1)),
       battery: Math.floor(getRandomArbitrary(20, 100)),
       gps: {
-        lat: CENTER_LAT + getRandomArbitrary(-0.005, 0.005),
-        lng: CENTER_LNG + getRandomArbitrary(-0.005, 0.005)
+        lat: targetGps.lat,
+        lng: targetGps.lng
       },
       timestamp: Date.now()
     };
@@ -67,7 +88,7 @@ async function updateTelemetry() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      
+
       if (response.ok) {
         console.log(`📡 Pushed data for Collar ${id}: HR=${data.heartRate} Temp=${data.temperature}`);
       } else {
@@ -76,7 +97,8 @@ async function updateTelemetry() {
     } catch (e) {
       console.error(`⚠️ Error updating Collar ${id}:`, e.message);
     }
-  }
+  });
+  locationIndex = (locationIndex + 1) % STATIC_LOCATIONS.length;
 }
 
 // Run every 5 seconds

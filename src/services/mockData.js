@@ -3,8 +3,14 @@
  * Kept separate to avoid circular imports between cattleService and telemetryService.
  */
 
-export const CENTER_LAT = 9.9252;
-export const CENTER_LNG = 78.1198;
+export const STATIC_GPS_LOCATIONS = [
+  { lat: 11.077809, lng: 77.142879 },
+  { lat: 11.077073, lng: 77.142729 },
+  { lat: 11.077788, lng: 77.142827 }
+];
+
+export const CENTER_LAT = 11.077809;
+export const CENTER_LNG = 77.142879;
 
 export const MOCK_CATTLE = [
   {
@@ -19,7 +25,7 @@ export const MOCK_CATTLE = [
       heartRate: 72,
       temperature: 38.6,
       battery: 88,
-      gps: { lat: CENTER_LAT + 0.0003, lng: CENTER_LNG + 0.0002 },
+      gps: { lat: 11.077809, lng: 77.142879 },
       lastUpdated: 'Demo'
     },
     history: {
@@ -41,7 +47,7 @@ export const MOCK_CATTLE = [
       heartRate: 78,
       temperature: 39.1,
       battery: 15,
-      gps: { lat: CENTER_LAT - 0.0002, lng: CENTER_LNG + 0.0005 },
+      gps: { lat: 11.077073, lng: 77.142729 },
       lastUpdated: 'Demo'
     },
     history: {
@@ -52,3 +58,4 @@ export const MOCK_CATTLE = [
     status: 'Warning'
   }
 ];
+

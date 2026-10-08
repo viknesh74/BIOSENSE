@@ -230,8 +230,8 @@ export const AppProvider = ({ children }) => {
         t,
 
         // GPS center (used by GPSTracking, CattleDetails)
-        centerLat: 9.9252,
-        centerLng: 78.1198
+        centerLat: 11.077809,
+        centerLng: 77.142879
       }}
     >
       {children}

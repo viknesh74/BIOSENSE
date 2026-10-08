@@ -8,8 +8,16 @@ export default function GPSTracking() {
   const { cattle, selectedCattleId, setSelectedCattleId, centerLat, centerLng, t } = useContext(AppContext);
   const mapRef = useRef(null);
 
-  const cow = cattle.find((c) => c.id === selectedCattleId) || cattle[0];
-  const { lat, lng } = cow.telemetry.gps;
+  const cow = cattle.find((c) => c.id === selectedCattleId) || cattle[0] || {
+    id: '101',
+    name: 'Livestock',
+    telemetry: { gps: { lat: centerLat, lng: centerLng } }
+  };
+  
+  const rawGps = cow?.telemetry?.gps;
+  const isValidRegion = rawGps && rawGps.lat > 11.0 && rawGps.lat < 11.2 && rawGps.lng > 77.0 && rawGps.lng < 77.3;
+  const lat = isValidRegion ? rawGps.lat : centerLat;
+  const lng = isValidRegion ? rawGps.lng : centerLng;
 
   // Calculate distance from center (approximate in meters)
   // 1 degree lat is ~111,000 meters.
