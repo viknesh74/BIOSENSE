@@ -42,6 +42,7 @@ export default function Chatbot() {
 
   // ── Load Speech Synthesis Voices ──────────────────────────────────────────
   useEffect(() => {
+<<<<<<< HEAD
     const updateVoices = () => {
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         setVoices(window.speechSynthesis.getVoices() || []);
@@ -64,6 +65,22 @@ export default function Chatbot() {
     setMessages([{
       sender: 'bot',
       text: welcomeMsg,
+=======
+    let welcomeText = "Hello! I'm BioSense AI, your smart livestock health assistant. Ask me anything about your cattle's health, sensor readings, or farm advice. 🐄";
+    if (language === 'ta') {
+      welcomeText = 'வணக்கம்! நான் BioSense AI உதவியாளர். உங்கள் கால்நடைகளின் உடல்நிலை, வெப்பநிலை, இதயத்துடிப்பு பற்றி எந்த கேள்வியும் கேளுங்கள். நான் தமிழிலும் பதில் சொல்வேன்! 🐄';
+    } else if (language === 'hi') {
+      welcomeText = 'नमस्ते! मैं बायोसेन्स एआई सहायक हूँ। अपने पशुओं के स्वास्थ्य के बारे में कुछ भी पूछें। मैं हिंदी में भी जवाब दूंगा! 🐄';
+    } else if (language === 'ml') {
+      welcomeText = 'നമസ്കാരം! ഞാൻ BioSense AI സഹായിയാണ്. നിങ്ങളുടെ കന്നുകാലികളുടെ ആരോഗ്യം, താപനില, ഹൃദയമിടിപ്പ് എന്നിവയെക്കുറിച്ച് എന്തും ചോദിക്കാം. ഞാൻ മലയാളത്തിലും മറുപടി നൽകും! 🐄';
+    } else if (language === 'kn') {
+      welcomeText = 'ನಮಸ್ಕಾರ! ನಾನು BioSense AI ಸಹಾಯಕ. ನಿಮ್ಮ ಜಾನುವಾರುಗಳ ಆರೋಗ್ಯ, ತಾಪಮಾನ, ಹೃದಯ ಬಡಿತದ ಬಗ್ಗೆ ಏನೇ ಇರಲಿ ಕೇಳಿ. ನಾನು ಕನ್ನಡದಲ್ಲೂ ಉತ್ತರಿಸುತ್ತೇನೆ! 🐄';
+    }
+
+    setMessages([{
+      sender: 'bot',
+      text: welcomeText,
+>>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
     setChatHistory([]);
@@ -82,10 +99,23 @@ export default function Chatbot() {
     const rec = new SpeechRecognition();
     rec.continuous = false;
     rec.interimResults = false;
+<<<<<<< HEAD
     rec.lang = language === 'ta' ? 'ta-IN' : language === 'hi' ? 'hi-IN' : 'en-US';
 
     rec.onstart = () => setIsListening(true);
     rec.onend = () => setIsListening(false);
+=======
+    const langLocaleMap = {
+      ta: 'ta-IN',
+      hi: 'hi-IN',
+      ml: 'ml-IN',
+      kn: 'kn-IN',
+      en: 'en-US'
+    };
+    rec.lang = langLocaleMap[language] || 'en-US';
+    rec.onstart  = () => setIsListening(true);
+    rec.onend    = () => setIsListening(false);
+>>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
     rec.onresult = (e) => {
       const transcript = e.results[0]?.[0]?.transcript;
       if (transcript) {
@@ -132,6 +162,7 @@ export default function Chatbot() {
 
   // ── Speech Synthesis (Text to Speech) ──────────────────────────────────────
   const speakText = (text) => {
+<<<<<<< HEAD
     if (!speakResponses || typeof window === 'undefined' || !window.speechSynthesis) return;
     
     window.speechSynthesis.cancel();
@@ -156,6 +187,23 @@ export default function Chatbot() {
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     window.speechSynthesis.speak(utterance);
+=======
+    if (!speakResponses) return;
+    window.speechSynthesis?.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const langLocaleMap = {
+      ta: 'ta-IN',
+      hi: 'hi-IN',
+      ml: 'ml-IN',
+      kn: 'kn-IN',
+      en: 'en-US'
+    };
+    utterance.lang = langLocaleMap[language] || 'en-US';
+    const voices = window.speechSynthesis?.getVoices() || [];
+    const voice  = voices.find(v => v.lang.startsWith(language));
+    if (voice) utterance.voice = voice;
+    window.speechSynthesis?.speak(utterance);
+>>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
   };
 
   // ── Build Live Farm Telemetry Context ─────────────────────────────────────
@@ -349,6 +397,18 @@ export default function Chatbot() {
         { label: 'तेज बुखार का उपचार?',       query: 'यदि गाय को तेज बुखार हो तो तुरंत क्या प्राथमिक उपचार करना चाहिए?' },
         { label: 'थनैल (Mastitis) रोकथाम?',   query: 'मस्टाइटिस (थनैल) से बचाव के लिए जैविक और चिकित्सीय उपाय क्या हैं?' },
         { label: 'दूध उत्पादन बढ़ाना?',        query: 'पशुओं में स्वस्थ दूध उत्पादन बढ़ाने के लिए संतुलित आहार क्या होना चाहिए?' },
+      ]
+    : language === 'ml'
+    ? [
+        { label: 'കോളർ 101 അവസ്ഥ?',       query: 'കോളർ 101-ന്റെ നിലവിലെ ആരോഗ്യ നില എന്താണ്?' },
+        { label: 'ഉയർന്ന താപനില ഉപദേശം?',  query: 'എന്റെ പശുവിന് ഉയർന്ന ശരീര താപനിലയുണ്ട്. ഞാൻ എന്ത് ചെയ്യണം?' },
+        { label: 'അടിയന്തര നടപടികൾ?',      query: 'എന്റെ ഒരു മൃഗം എമർജൻസി അവസ്ഥയിലാണ്. ഞാൻ എന്തൊക്കെ നടപടികൾ എടുക്കണം?' },
+      ]
+    : language === 'kn'
+    ? [
+        { label: 'ಕಾಲರ್ 101 ಸ್ಥಿತಿ?',         query: 'ಕಾಲರ್ 101 ರ ಪ್ರಸ್ತುತ ಆರೋಗ್ಯ ಸ್ಥಿತಿ ಏನು?' },
+        { label: 'ಹೆಚ್ಚಿನ ತಾಪಮಾನ ಸಲಹೆ?',    query: 'ನನ್ನ ಜಾನುವಾರಿಗೆ ಹೆಚ್ಚಿನ ದೇಹದ ತಾಪಮಾನವಿದೆ. ನಾನು ಏನು ಮಾಡಬೇಕು?' },
+        { label: 'ತುರ್ತು ಕ್ರಮಗಳು?',            query: 'ನನ್ನ ಪ್ರಾಣಿಗಳಲ್ಲಿ ಒಂದು ತುರ್ತು ಸ್ಥಿತಿಯಲ್ಲಿದೆ. ನಾನು ತಕ್ಷಣ ಯಾವ ಕ್ರಮಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳಬೇಕು?' },
       ]
     : [
         { label: 'Status of Collar 101?',     query: 'What is the current health and vitals status for Collar ID 101?' },

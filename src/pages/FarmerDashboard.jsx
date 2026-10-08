@@ -44,15 +44,15 @@ export default function FarmerDashboard() {
   const handleAddSubmit = (e) => {
     e.preventDefault();
     if (!animalType) {
-      setErrorMsg(t('Please select an animal type', 'மாட்டின் வகையை தேர்ந்தெடுக்கவும்', 'पशु का प्रकार चुनें'));
+      setErrorMsg(t('Please select an animal type'));
       return;
     }
     if (!name.trim()) {
-      setErrorMsg(t('Please enter a nick name', 'செல்லப் பெயரை உள்ளிடவும்', 'उपनाम दर्ज करें'));
+      setErrorMsg(t('Please enter a nick name'));
       return;
     }
     if (!collarId.trim()) {
-      setErrorMsg(t('Please enter a collar ID', 'காலர் ஐடியை உள்ளிடவும்'));
+      setErrorMsg(t('Please enter a collar ID'));
       return;
     }
 
@@ -207,7 +207,7 @@ export default function FarmerDashboard() {
                 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-400">COLLAR ID: {cow.id}</span>
+                    <span className="text-xs font-bold text-slate-400">{t('Collar ID')}: {cow.id}</span>
                     <span className={`px-2 py-0.5 text-xxs font-bold border rounded-lg uppercase tracking-wider ${statusBadgeColor}`}>
                       {statusLabel}
                     </span>
@@ -218,7 +218,7 @@ export default function FarmerDashboard() {
                   </h3>
                   
                   <p className="text-xs text-slate-500 font-medium">
-                    {cow.animalType || 'Cow'} • {cow.breed} • {cow.age} • {cow.gender}
+                    {t(cow.animalType || 'Cow')} • {t(cow.breed)} • {cow.age} • {t(cow.gender)}
                   </p>
                 </div>
               </div>
@@ -367,31 +367,31 @@ export default function FarmerDashboard() {
                   >
                     {animalType === 'Sheep' ? (
                       <>
-                        <option value="Merino">Merino</option>
-                        <option value="Dorper">Dorper</option>
-                        <option value="Suffolk">Suffolk</option>
-                        <option value="Rambouillet">Rambouillet</option>
+                        <option value="Merino">{t('Merino')}</option>
+                        <option value="Dorper">{t('Dorper')}</option>
+                        <option value="Suffolk">{t('Suffolk')}</option>
+                        <option value="Rambouillet">{t('Rambouillet')}</option>
                       </>
                     ) : animalType === 'Goat' ? (
                       <>
-                        <option value="Boer">Boer</option>
-                        <option value="Jamnapari">Jamnapari</option>
-                        <option value="Beetal">Beetal</option>
-                        <option value="Sirohi">Sirohi</option>
+                        <option value="Boer">{t('Boer')}</option>
+                        <option value="Jamnapari">{t('Jamnapari')}</option>
+                        <option value="Beetal">{t('Beetal')}</option>
+                        <option value="Sirohi">{t('Sirohi')}</option>
                       </>
                     ) : animalType === 'Buffalo' ? (
                       <>
-                        <option value="Murrah">Murrah</option>
-                        <option value="Surti">Surti</option>
-                        <option value="Jaffarabadi">Jaffarabadi</option>
-                        <option value="Nili-Ravi">Nili-Ravi</option>
+                        <option value="Murrah">{t('Murrah')}</option>
+                        <option value="Surti">{t('Surti')}</option>
+                        <option value="Jaffarabadi">{t('Jaffarabadi')}</option>
+                        <option value="Nili-Ravi">{t('Nili-Ravi')}</option>
                       </>
                     ) : (
                       <>
-                        <option value="Gir (Desi)">Gir (Desi)</option>
-                        <option value="Jersey">Jersey</option>
-                        <option value="Holstein">Holstein</option>
-                        <option value="Sahiwal">Sahiwal</option>
+                        <option value="Gir (Desi)">{t('Gir (Desi)')}</option>
+                        <option value="Jersey">{t('Jersey')}</option>
+                        <option value="Holstein">{t('Holstein')}</option>
+                        <option value="Sahiwal">{t('Sahiwal')}</option>
                       </>
                     )}
                   </select>

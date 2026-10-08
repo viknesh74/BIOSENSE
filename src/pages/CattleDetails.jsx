@@ -129,11 +129,12 @@ export default function CattleDetails() {
                       </div>
                     )}
                     <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold rounded-lg border border-white/10 uppercase tracking-widest">
-                      ID: {cow.id}
+                      {t('Collar ID')}: {cow.id}
                     </div>
                   </div>
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div>
+<<<<<<< HEAD
                       <div className="flex justify-between items-start">
                         <h3 className="text-xl font-black text-slate-900 dark:text-white font-display mb-1">{cow.name}</h3>
                         <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-bold text-slate-500">
@@ -141,6 +142,10 @@ export default function CattleDetails() {
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 font-bold">{cow.breed} • {cow.age}</p>
+=======
+                      <h3 className="text-xl font-black text-slate-900 dark:text-white font-display mb-1">{cow.name}</h3>
+                      <p className="text-xs text-slate-500 font-bold">{t(cow.breed)} • {cow.age}</p>
+>>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
                     </div>
                     
                     <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
@@ -341,7 +346,7 @@ export default function CattleDetails() {
               <span className="text-xs font-extrabold text-teal-600 dark:text-teal-400 tracking-widest uppercase">
                 {t('Collar Activated Node', 'காலர் ஐடி பதிவிறக்கம்', 'कॉलर सक्रिय नोड')}
               </span>
-              <span className="text-xs text-slate-400 font-bold">Collar ID: {cow.id}</span>
+              <span className="text-xs text-slate-400 font-bold">{t('Collar ID')}: {cow.id}</span>
             </div>
             
             <h2 className="text-3xl font-black text-slate-900 dark:text-white font-display">{cow.name}</h2>
@@ -349,7 +354,7 @@ export default function CattleDetails() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
               <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{t('Breed', 'இனம்', 'नस्ल')}</span>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{cow.breed}</p>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{t(cow.breed)}</p>
               </div>
               <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{t('Age', 'வயது', 'आयु')}</span>

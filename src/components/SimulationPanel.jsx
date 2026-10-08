@@ -36,7 +36,7 @@ export default function SimulationPanel() {
           <div className="flex items-center justify-between px-4 py-3 bg-slate-850 border-b border-slate-800">
             <div className="flex items-center gap-2 text-amber-400 font-bold text-sm uppercase tracking-wider">
               <Play size={16} />
-              <span>Collar Telemetry Sim</span>
+              <span>{t('Collar Telemetry Sim')}</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -49,14 +49,14 @@ export default function SimulationPanel() {
           {/* Controls Body */}
           <div className="p-4 space-y-4 text-xs">
             <p className="text-slate-400 text-[11px] leading-relaxed">
-              Use these overrides to simulate live telemetry data coming from the collars of your livestock. Updates reflect in real-time.
+              {t('Use these overrides to simulate live telemetry data coming from the collars of your livestock. Updates reflect in real-time.')}
             </p>
 
             {/* Heart Rate Controls */}
             <div className="space-y-1.5">
               <label className="text-slate-300 font-semibold flex items-center gap-1.5">
                 <ShieldAlert size={14} className="text-emerald-400" />
-                <span>Heart Rate (Collar 101)</span>
+                <span>{t('Heart Rate (Collar 101)')}</span>
               </label>
               <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl">
                 {['normal', 'high', 'low'].map((mode) => (
@@ -69,7 +69,7 @@ export default function SimulationPanel() {
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    {mode}
+                    {t(mode === 'normal' ? 'Normal' : mode === 'high' ? 'High' : 'Low')}
                   </button>
                 ))}
               </div>
@@ -79,7 +79,7 @@ export default function SimulationPanel() {
             <div className="space-y-1.5">
               <label className="text-slate-300 font-semibold flex items-center gap-1.5">
                 <ShieldAlert size={14} className="text-rose-400" />
-                <span>Body Temp (Collar 101)</span>
+                <span>{t('Body Temp (Collar 101)')}</span>
               </label>
               <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl">
                 {['normal', 'high'].map((mode) => (
@@ -92,7 +92,7 @@ export default function SimulationPanel() {
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    {mode === 'normal' ? 'Normal (~38.5°)' : 'Fever (>40.5°)'}
+                    {mode === 'normal' ? t('Normal (~38.5°)') : t('Fever (>40.5°)')}
                   </button>
                 ))}
               </div>
@@ -102,7 +102,7 @@ export default function SimulationPanel() {
             <div className="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl">
               <span className="font-semibold text-slate-300 flex items-center gap-1.5">
                 <Compass size={14} className="text-teal-400" />
-                Geofence Breach (Collar 101)
+                {t('Geofence Breach (Collar 101)')}
               </span>
               <button
                 onClick={() => updateConfig('geofenceBreach', !simConfig.geofenceBreach)}
@@ -122,7 +122,7 @@ export default function SimulationPanel() {
             <div className="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl">
               <span className="font-semibold text-slate-300 flex items-center gap-1.5">
                 <Zap size={14} className="text-yellow-400" />
-                Simulate Battery Drain
+                {t('Simulate Battery Drain')}
               </span>
               <button
                 onClick={() => updateConfig('batteryDrain', !simConfig.batteryDrain)}
@@ -142,7 +142,7 @@ export default function SimulationPanel() {
             <div className="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl">
               <span className="font-semibold text-slate-300 flex items-center gap-1.5">
                 <RefreshCw size={14} className="text-indigo-400" />
-                Live Map Wander
+                {t('Live Map Wander')}
               </span>
               <button
                 onClick={() => updateConfig('liveMapWander', !simConfig.liveMapWander)}
@@ -160,23 +160,23 @@ export default function SimulationPanel() {
             
             {/* Simulation Status Monitor */}
             <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-[10px] space-y-1">
-              <p className="text-slate-500 font-bold tracking-wider uppercase">Active Telemetry Simulation</p>
+              <p className="text-slate-500 font-bold tracking-wider uppercase">{t('Active Telemetry Simulation')}</p>
               <div className="flex justify-between">
-                <span className="text-slate-400">Heart Rate:</span>
+                <span className="text-slate-400">{t('Heart Rate')}:</span>
                 <span className={simConfig.heartRateMode !== 'normal' ? 'text-amber-400 font-semibold' : 'text-slate-300'}>
-                  {simConfig.heartRateMode.toUpperCase()}
+                  {t(simConfig.heartRateMode === 'high' ? 'High' : simConfig.heartRateMode === 'low' ? 'Low' : 'Normal')}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Temperature:</span>
+                <span className="text-slate-400">{t('Temperature')}:</span>
                 <span className={simConfig.tempMode !== 'normal' ? 'text-amber-400 font-semibold' : 'text-slate-300'}>
-                  {simConfig.tempMode === 'high' ? 'HIGH FEVER' : 'NORMAL'}
+                  {t(simConfig.tempMode === 'high' ? 'High Temperature (Fever)' : 'Normal')}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Geofence:</span>
+                <span className="text-slate-400">{t('Geofence Safe Zone')}:</span>
                 <span className={simConfig.geofenceBreach ? 'text-rose-400 font-semibold' : 'text-emerald-400 font-semibold'}>
-                  {simConfig.geofenceBreach ? 'BREACHED' : 'SAFE'}
+                  {t(simConfig.geofenceBreach ? 'Breached' : 'Safe')}
                 </span>
               </div>
             </div>

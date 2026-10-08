@@ -26,8 +26,8 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <Globe className="text-emerald-500" size={20} />
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('System Language', 'வலைத்தள மொழி')}</h3>
-              <p className="text-slate-400 text-xxs mt-0.5">{t('Select English or Tamil text localization.', 'தமிழ் அல்லது ஆங்கில மொழியைத் தேர்ந்தெடுக்கவும்.')}</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{t('System Language')}</h3>
+              <p className="text-slate-400 text-xxs mt-0.5">{t('Select your preferred language for the interface.')}</p>
             </div>
           </div>
 
@@ -44,10 +44,10 @@ export default function SettingsPage() {
 
           <div className="space-y-3">
             {[
-              t('Emergency vital signs warning sounds (Heart Rate/Fever)', 'அவசர உடலியல் மாற்றங்களின் போது ஒலி எழுப்புதல் (இதயத்துடிப்பு/காய்ச்சல்)'),
-              t('Out-of-boundary GPS geofencing instant push emails', 'பாதுகாப்பு எல்லை மீறப்பட்டால் உடனடியாக மின்னஞ்சல் அனுப்புதல்'),
-              t('Low Collar battery alerts alerts under 20%', 'காலர் பேட்டரி 20%க்குக் கீழே குறையும் போது எச்சரிக்கை செய்தல்'),
-              t('Veterinary Doctor Prescription sync alerts', 'மருத்துவரின் மருந்துச்சீட்டு வந்தவுடன் அறிவிப்பு வெளியிடுதல்')
+              t('Emergency vital signs warning sounds (Heart Rate/Fever)'),
+              t('Out-of-boundary GPS geofencing instant push emails'),
+              t('Low Collar battery alerts alerts under 20%'),
+              t('Veterinary Doctor Prescription sync alerts')
             ].map((pref, idx) => (
               <label key={idx} className="flex items-start gap-3 p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-850 rounded-xl cursor-pointer">
                 <input

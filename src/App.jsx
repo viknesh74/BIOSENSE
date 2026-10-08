@@ -130,7 +130,21 @@ export default function App() {
                 {activeRole === 'farmer' ? t('Farmer Console', 'விவசாயி கட்டுப்பாட்டு அறை') : t('Veterinary Doctor Console', 'கால்நடை மருத்துவர் கட்டுப்பாட்டு அறை')}
               </span>
               <h2 className="text-xs md:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mt-1 md:mt-1 capitalize truncate max-w-[150px] sm:max-w-xs">
-                {activeTab.replace('-', ' ')}
+                {t(activeTab === 'dashboard' ? 'Dashboard' :
+                   activeTab === 'cattle-details' ? 'Cattle Details' :
+                   activeTab === 'analytics' ? 'Herd Analytics' :
+                   activeTab === 'cattle-analytics' ? 'Health Analytics' :
+                   activeTab === 'gps' ? 'Live GPS Tracking' :
+                   activeTab === 'alerts' ? 'Alerts & Notifications' :
+                   activeTab === 'schemes' ? 'Govt Schemes' :
+                   activeTab === 'cattle-care-ai' ? 'CattleCare AI' :
+                   activeTab === 'vet-services' ? 'Nearby Vets' :
+                   activeTab === 'chatbot' ? 'AI Voice Chatbot' :
+                   activeTab === 'doctor-dashboard' ? 'Doctor Dashboard' :
+                   activeTab === 'doctor-consultation' ? 'Consultation Room' :
+                   activeTab === 'reports' ? 'Health Reports' :
+                   activeTab === 'profile' ? 'My Profile' :
+                   activeTab === 'settings' ? 'Settings' : activeTab.replace('-', ' '))}
               </h2>
             </div>
           </div>

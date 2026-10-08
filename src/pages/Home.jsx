@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import Logo from '../components/Logo';
 
+import LanguageDropdown from '../components/LanguageDropdown';
+
 export default function Home() {
   const { setActiveRole, setActiveTab, setDoctorProfile, t } = useContext(AppContext);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -199,7 +201,12 @@ export default function Home() {
           <Logo className="text-3xl" />
         </div>
 
+<<<<<<< HEAD
         <div className="flex items-center gap-3">
+=======
+        <div className="flex items-center gap-4">
+          <LanguageDropdown />
+>>>>>>> a03f2ad (Add full multi-language support with 5 languages, updated dictionaries, components, and UI)
           <button
             onClick={() => openLoginModal('doctor')}
             className="hidden sm:flex items-center gap-2 px-4 py-2 text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded-xl hover:bg-teal-100 transition-all cursor-pointer"

@@ -111,7 +111,7 @@ export default function Alerts() {
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between">
                       <h4 className={`text-sm font-bold leading-snug font-display ${!item.read ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                        {item.title}
+                        {t(item.title)}
                         {!item.read && (
                           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-2" />
                         )}
@@ -122,11 +122,11 @@ export default function Alerts() {
                     </div>
 
                     <p className={`text-xs leading-relaxed ${!item.read ? 'text-slate-700 dark:text-slate-350 font-medium' : 'text-slate-500 dark:text-slate-450'}`}>
-                      {item.message}
+                      {t(item.message)}
                     </p>
 
                     <div className="flex justify-between items-center pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      <span>Collar ID: {item.collarId}</span>
+                      <span>{t('Collar ID')}: {item.collarId}</span>
                       <span>{item.read ? t('Read', 'படித்தது') : t('Mark Read', 'படிக்காதது')}</span>
                     </div>
                   </div>
