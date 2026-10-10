@@ -25,10 +25,14 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+import { ToastProvider } from './components/ui/Toast.jsx'
+
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary>
     <AppProvider>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </AppProvider>
   </ErrorBoundary>
 )

@@ -2,20 +2,31 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: 'Inter', sans-serif;
-  --font-display: 'Outfit', sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
   
-  /* BioSense Collar Brand Palette */
-  --color-brand-50: #f0fdf4;
-  --color-brand-100: #dcfce7;
-  --color-brand-500: #22c55e;
-  --color-brand-600: #16a34a;
-  --color-brand-700: #15803d;
-  --color-brand-900: #14532d;
+  /* BioSense Collar Botanical AgriTech Palette */
+  --color-forest: #174D38;
+  --color-forest-deep: #103B2D;
+  --color-leaf: #4B8A64;
+  --color-sage: #DDEADF;
+  --color-sage-light: #EEF5F0;
+  --color-ivory: #F7F6F0;
+  --color-ink: #20312A;
+  --color-ink-muted: #5A7065;
+  --color-amber-warm: #D89B38;
+  --color-critical: #C94C48;
+
+  --color-brand-50: #EEF5F0;
+  --color-brand-100: #DDEADF;
+  --color-brand-500: #4B8A64;
+  --color-brand-600: #174D38;
+  --color-brand-700: #103B2D;
+  --color-brand-900: #0A241B;
   
-  --color-healthy: #10b981;
-  --color-warning: #f59e0b;
-  --color-emergency: #ef4444;
+  --color-healthy: #4B8A64;
+  --color-warning: #D89B38;
+  --color-emergency: #C94C48;
 }
 
 /* Base custom styles */

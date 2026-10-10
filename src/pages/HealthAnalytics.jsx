@@ -7,21 +7,29 @@ export default function HealthAnalytics() {
   const { cattle, selectedCattleId, setSelectedCattleId, t } = useContext(AppContext);
   const [timeFilter, setTimeFilter] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
 
-  const cow = cattle.find((c) => c.id === selectedCattleId) || cattle[0];
+  const cow = cattle.find((c) => String(c.id) === String(selectedCattleId)) || cattle[0];
+
+  const defaultHeartRate = [70, 72, 71, 74, 72, 73, 72];
+  const defaultTemp = [38.5, 38.6, 38.5, 38.7, 38.6, 38.6, 38.6];
+  const defaultLabels = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
+
+  const hrList = cow?.history?.heartRate?.length ? cow.history.heartRate : defaultHeartRate;
+  const tempList = cow?.history?.temperature?.length ? cow.history.temperature : defaultTemp;
+  const timeLabels = cow?.history?.timeLabels?.length ? cow.history.timeLabels : defaultLabels;
 
   // Map history to Recharts format
-  const chartData = cow.history.heartRate.map((hr, idx) => {
+  const chartData = hrList.map((hr, idx) => {
     return {
-      time: cow.history.timeLabels[idx] || '',
+      time: timeLabels[idx] || '',
       bpm: hr,
-      temp: cow.history.temperature[idx]
+      temp: tempList[idx] || 38.6
     };
   });
 
   // Calculate statistics
-  const avgHR = Math.round(cow.history.heartRate.reduce((a, b) => a + b, 0) / cow.history.heartRate.length);
-  const maxTemp = Math.max(...cow.history.temperature);
-  const minTemp = Math.min(...cow.history.temperature);
+  const avgHR = Math.round(hrList.reduce((a, b) => a + b, 0) / hrList.length);
+  const maxTemp = Math.max(...tempList);
+  const minTemp = Math.min(...tempList);
 
   return (
     <div className="space-y-6 font-sans">

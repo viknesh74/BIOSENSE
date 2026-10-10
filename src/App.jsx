@@ -104,7 +104,7 @@ export default function App() {
   const unreadAlertsCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-[#F7F6F0] dark:bg-[#0A1612] dark:text-[#DDEADF] transition-colors duration-300 overflow-hidden font-sans">
       
       {/* Sidebar Navigation */}
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
@@ -112,24 +112,23 @@ export default function App() {
       {/* Main Workspace Frame */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
-        {/* Navigation Top Bar - Includes pt-safe for mobile notch */}
-        <header className="pt-safe shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-3 flex items-center justify-between z-10 print:hidden h-auto min-h-16">
+        {/* Navigation Top Bar */}
+        <header className="pt-safe shrink-0 bg-white dark:bg-[#0D2219] border-b border-[#DDEADF] dark:border-[#174D38]/60 px-4 md:px-6 py-3 flex items-center justify-between z-10 print:hidden h-auto min-h-16 shadow-xs">
           
           <div className="flex items-center gap-3">
             {/* Mobile Hamburger Menu */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 -ml-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="md:hidden p-2 -ml-2 rounded-xl bg-[#EEF5F0] dark:bg-[#174D38]/40 text-[#5A7065] dark:text-[#9FB5AA] hover:text-[#103B2D] dark:hover:text-white transition-colors"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
 
-            {/* Breadcrumb Info */}
             <div>
-              <span className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest block leading-none">
+              <span className="text-[9px] md:text-[10px] text-[#5A7065] dark:text-[#4B8A64] font-bold uppercase tracking-widest block leading-none">
                 {activeRole === 'farmer' ? t('Farmer Console', 'விவசாயி கட்டுப்பாட்டு அறை') : t('Veterinary Doctor Console', 'கால்நடை மருத்துவர் கட்டுப்பாட்டு அறை')}
               </span>
-              <h2 className="text-xs md:text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mt-1 md:mt-1 capitalize truncate max-w-[150px] sm:max-w-xs">
+              <h2 className="text-xs md:text-sm font-bold text-[#103B2D] dark:text-[#EEF5F0] uppercase tracking-wider mt-0.5 capitalize truncate max-w-[150px] sm:max-w-xs">
                 {t(activeTab === 'dashboard' ? 'Dashboard' :
                    activeTab === 'cattle-details' ? 'Cattle Details' :
                    activeTab === 'analytics' ? 'Herd Analytics' :
@@ -160,12 +159,12 @@ export default function App() {
             {activeRole === 'farmer' && (
               <button
                 onClick={() => setActiveTab('alerts')}
-                className="p-1.5 md:p-2 bg-slate-100 dark:bg-slate-800 text-slate-550 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl border border-slate-200/40 transition-all relative"
+                className="p-1.5 md:p-2 bg-[#EEF5F0] dark:bg-[#174D38]/40 text-[#5A7065] dark:text-[#9FB5AA] hover:text-[#103B2D] dark:hover:text-white rounded-xl border border-[#DDEADF] dark:border-[#174D38]/60 transition-all relative"
                 title="View active alerts"
               >
                 <Bell size={15} />
                 {unreadAlertsCount > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+                  <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#C94C48] rounded-full animate-ping" />
                 )}
               </button>
             )}
@@ -173,17 +172,17 @@ export default function App() {
             {/* Profile trigger */}
             <button
               onClick={() => setActiveTab('profile')}
-              className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all shrink-0"
+              className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#174D38] text-white border-2 border-[#4B8A64]/50 flex items-center justify-center hover:bg-[#103B2D] transition-all shrink-0 text-xs font-black"
               title="View profile"
             >
-              <User size={14} className="md:w-4 md:h-4" />
+              <User size={13} />
             </button>
 
           </div>
         </header>
 
-        {/* Content view window container - includes pb-safe for bottom edge on mobile */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-slate-50/50 dark:bg-slate-950/40 pb-safe print:p-0 print:bg-white relative">
+        {/* Content view window container */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-[#F7F6F0] dark:bg-[#0A1612] pb-safe print:p-0 print:bg-white relative">
           {renderActiveTab()}
         </main>
       </div>

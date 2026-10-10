@@ -1,41 +1,85 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useMemo } from 'react';
 import { AppContext } from '../context/AppContext';
 import { 
   Heart, 
   Thermometer, 
   MapPin, 
   Battery, 
-  Eye, 
-  Download, 
   AlertTriangle, 
   ShieldCheck, 
   Search, 
-  ArrowLeft,
-  Pill,
-  Activity,
-  Calendar,
-  Plus,
-  Printer,
-  CheckCircle,
-  Clock,
-  User,
-  X,
-  Sparkles,
-  FileText
+  ArrowLeft, 
+  Pill, 
+  Activity, 
+  Plus, 
+  Printer, 
+  X, 
+  Sparkles, 
+  Edit, 
+  Trash2, 
+  MoreVertical, 
+  Cpu, 
+  Radio, 
+  Compass, 
+  RefreshCw,
+  Eye 
 } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
+import { Skeleton } from '../components/ui/Skeleton';
+import { DropdownMenu, DropdownMenuItem } from '../components/ui/DropdownMenu';
+import { CollarFormDialog } from '../components/collars/CollarFormDialog';
+import { DeleteCollarDialog } from '../components/collars/DeleteCollarDialog';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import L from 'leaflet';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+
+// Fix Leaflet marker icon issue
+const cowMarkerIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
 export default function CattleDetails() {
-  const { cattle, selectedCattleId, setSelectedCattleId, setActiveTab, addVaccination, addMedicalTreatment, addHealthMonitoring, t } = useContext(AppContext);
+  const { 
+    cattle, 
+    selectedCattleId, 
+    setSelectedCattleId, 
+    setActiveTab, 
+    addCollar,
+    updateCollar,
+    removeCollar,
+    addVaccination, 
+    addMedicalTreatment, 
+    addHealthMonitoring,
+    refreshCattle,
+    cattleLoading,
+    t 
+  } = useContext(AppContext);
   
-  const [viewMode, setViewMode] = useState(selectedCattleId ? 'detail' : 'list'); // 'list' or 'detail'
-  const [activeTabSub, setActiveTabSub] = useState('telemetry'); // 'telemetry' | 'vaccines' | 'treatments' | 'history'
+  const [viewMode, setViewMode] = useState(selectedCattleId ? 'detail' : 'list'); // 'list' | 'detail'
+  const [activeTabSub, setActiveTabSub] = useState('overview'); // 'overview' | 'telemetry' | 'gps' | 'vaccines' | 'treatments' | 'collar'
+  
+  // Search, filter & sort states
   const [searchQuery, setSearchQuery] = useState('');
+  const [animalTypeFilter, setAnimalTypeFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState('name-asc');
 
-  // Modals inside detail view
+  // Collar CRUD dialog states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingCollar, setEditingCollar] = useState(null);
+  const [deletingCollar, setDeletingCollar] = useState(null);
+
+  // Medical Record Form States
   const [showVacModal, setShowVacModal] = useState(false);
   const [showMedModal, setShowMedModal] = useState(false);
 
-  // New Record Form States
   const [vacForm, setVacForm] = useState({
     name: '',
     diseaseTarget: '',
@@ -63,102 +107,305 @@ export default function CattleDetails() {
     notes: ''
   });
 
-  // Filter cattle for the list view
-  const filteredCattle = cattle.filter(c => {
-    const query = searchQuery.toLowerCase();
-    return c.name.toLowerCase().includes(query) || c.id.toLowerCase().includes(query);
-  });
+  // Filtered & Sorted cattle list
+  const filteredCattle = useMemo(() => {
+    return cattle
+      .filter((c) => {
+        const query = searchQuery.toLowerCase().trim();
+        const matchesQuery = !query || 
+          c.name.toLowerCase().includes(query) || 
+          String(c.id).toLowerCase().includes(query) ||
+          (c.breed && c.breed.toLowerCase().includes(query));
+
+        const matchesType = animalTypeFilter === 'ALL' || (c.animalType || 'Cow') === animalTypeFilter;
+        const matchesStatus = statusFilter === 'ALL' || (c.status || 'Healthy') === statusFilter;
+
+        return matchesQuery && matchesType && matchesStatus;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+        if (sortBy === 'name-desc') return b.name.localeCompare(a.name);
+        if (sortBy === 'id-asc') return String(a.id).localeCompare(String(b.id));
+        if (sortBy === 'id-desc') return String(b.id).localeCompare(String(a.id));
+        return 0;
+      });
+  }, [cattle, searchQuery, animalTypeFilter, statusFilter, sortBy]);
 
   const handleSelectCattle = (id) => {
     setSelectedCattleId(id);
     setViewMode('detail');
   };
 
-  // --- 1. LIST VIEW --- //
+  const handleEditClick = (e, cow) => {
+    e.stopPropagation();
+    setEditingCollar(cow);
+  };
+
+  const handleDeleteClick = (e, cow) => {
+    e.stopPropagation();
+    setDeletingCollar(cow);
+  };
+
+  // ---------------------------------------------------------------------------
+  // 1. LIST VIEW
+  // ---------------------------------------------------------------------------
   if (viewMode === 'list') {
     return (
-      <div className="space-y-6 font-sans pb-10">
-        {/* Search Bar Header */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="space-y-6 font-sans pb-12 max-w-7xl mx-auto">
+        {/* Top Header Bar */}
+        <div className="bg-white dark:bg-[#0D2219] p-6 md:p-8 rounded-3xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white font-display">
-              {t('Livestock Database & Medical Files', 'கால்நடை தரவுத்தளம் & மருத்துவ கோப்புகள்', 'पशुधन डेटाबेस और चिकित्सा फाइलें')}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EEF5F0] dark:bg-[#174D38]/50 text-[#174D38] dark:text-[#A8D5BA] text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {cattle.length} {t('Active Collars Online', 'செயலில் உள்ள காலர்கள்')}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#103B2D] text-white text-[10px] font-bold uppercase tracking-wider">
+                IoT Fleet Management
+              </span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black text-[#103B2D] dark:text-white font-display">
+              {t('Livestock Database & Smart Collars', 'கால்நடை தரவுத்தளம் & ஸ்மார்ட் காலர்கள்', 'पशुधन डेटाबेस और स्मार्ट कॉलर')}
             </h2>
-            <p className="text-slate-500 text-sm mt-1">
-              {t('Search and select cattle to view live telemetry, vaccinations, and treatment history.', 'மாடுகளைத் தேடி அவற்றின் நேரலை தரவு, தடுப்பூசி மற்றும் மருத்துவ வரலாற்றைப் பார்க்கவும்.', 'लाइव टेलीमेट्री, टीकाकरण और उपचार इतिहास देखने के लिए मवेशी चुनें।')}
+            <p className="text-[#5A7065] dark:text-[#9FB5AA] text-sm mt-1 max-w-xl">
+              {t('Monitor and manage telemetry collars, vital health metrics, and electronic medical records across your entire herd.', 'உங்கள் மந்தையின் அனைத்து மாடுகளின் காலர் தரவு மற்றும் மருத்துவ விவரங்களை நிர்வகிக்கவும்.')}
             </p>
           </div>
-          
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder={t('Search by name or Collar ID...', 'பெயர் அல்லது ஐடி மூலம் தேடவும்...', 'नाम या कॉलर आईडी से खोजें...')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm font-semibold transition-all"
-            />
+
+          <div className="flex items-center gap-3 shrink-0">
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => refreshCattle?.()}
+              title={t('Refresh Records')}
+              className="gap-2 border-[#DDEADF] dark:border-[#174D38]"
+            >
+              <RefreshCw size={16} />
+              <span className="hidden sm:inline">{t('Sync')}</span>
+            </Button>
+
+            <Button
+              variant="default"
+              size="md"
+              onClick={() => setShowAddModal(true)}
+              className="bg-[#4B8A64] hover:bg-emerald-600 text-white shadow-lg shadow-black/10 border-0"
+            >
+              <Plus size={18} />
+              <span>{t('Add New Collar', 'புதிய காலர் சேர்', 'नया कॉलर जोड़ें')}</span>
+            </Button>
           </div>
         </div>
 
-        {/* Grid View */}
-        {filteredCattle.length > 0 ? (
+        {/* Filter and Search Bar */}
+        <div className="bg-white dark:bg-[#0D2219] p-4 md:p-5 rounded-2xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="relative flex-1 min-w-[260px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5A7065] dark:text-[#9FB5AA]" size={18} />
+            <input
+              type="text"
+              placeholder={t('Search by livestock name, breed or Collar ID...', 'பெயர் அல்லது காலர் ஐடி மூலம் தேடுக...', 'नाम या कॉलर आईडी से खोजें...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-[#F7F6F0] dark:bg-[#06140E] text-[#103B2D] dark:text-white border border-[#DDEADF] dark:border-[#174D38] rounded-xl focus:outline-none focus:border-[#4B8A64] focus:ring-2 focus:ring-[#4B8A64]/20 text-sm font-medium transition-all"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Animal Type Pills */}
+            <div className="flex items-center gap-1 bg-[#EEF5F0] dark:bg-[#06140E] p-1 rounded-xl border border-[#DDEADF]/60 dark:border-[#174D38] text-xs font-semibold">
+              {['ALL', 'Cow', 'Buffalo', 'Goat'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setAnimalTypeFilter(type)}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    animalTypeFilter === type
+                      ? 'bg-white dark:bg-[#103B2D] text-[#103B2D] dark:text-white shadow-xs font-bold'
+                      : 'text-[#5A7065] dark:text-[#9FB5AA] hover:text-[#103B2D] dark:hover:text-white'
+                  }`}
+                >
+                  {type === 'ALL' ? t('All Types') : type === 'Cow' ? '🐄 Cow' : type === 'Buffalo' ? '🐃 Buffalo' : '🐐 Goat'}
+                </button>
+              ))}
+            </div>
+
+            {/* Health Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-10 px-3 text-xs font-bold rounded-xl border border-[#DDEADF] dark:border-[#174D38] bg-[#F7F6F0] dark:bg-[#06140E] text-[#20312A] dark:text-[#DDEADF] focus:outline-none focus:ring-2 focus:ring-[#4B8A64]/20"
+            >
+              <option value="ALL">{t('All Health Status')}</option>
+              <option value="Healthy">🟢 Healthy</option>
+              <option value="Warning">🟡 Warning</option>
+              <option value="Emergency">🔴 Emergency</option>
+            </select>
+
+            {/* Sorting */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="h-10 px-3 text-xs font-bold rounded-xl border border-[#DDEADF] dark:border-[#174D38] bg-[#F7F6F0] dark:bg-[#06140E] text-[#20312A] dark:text-[#DDEADF] focus:outline-none focus:ring-2 focus:ring-[#4B8A64]/20"
+            >
+              <option value="name-asc">{t('Name (A → Z)')}</option>
+              <option value="name-desc">{t('Name (Z → A)')}</option>
+              <option value="id-asc">{t('Collar ID (Asc)')}</option>
+              <option value="id-desc">{t('Collar ID (Desc)')}</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Loading State Skeleton */}
+        {cattleLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 space-y-4">
+                <Skeleton className="h-44 w-full rounded-2xl" />
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="flex justify-between pt-2">
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredCattle.length > 0 ? (
+          /* Grid View Cards */
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredCattle.map((cow) => {
               const isEmergency = cow.status === 'Emergency';
               const isWarning = cow.status === 'Warning';
               const vacCount = (cow.vaccinations || []).length;
               const medCount = (cow.medicalTreatments || []).length;
-              
+              const batt = cow.telemetry?.battery ?? 85;
+
               return (
                 <div 
                   key={cow.id}
                   onClick={() => handleSelectCattle(cow.id)}
-                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden hover:shadow-lg transition-all cursor-pointer group hover:-translate-y-1 flex flex-col"
+                  className="bg-white dark:bg-[#0D2219] rounded-3xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs overflow-hidden hover:shadow-xl hover:border-[#4B8A64] transition-all duration-300 cursor-pointer group hover:-translate-y-1 flex flex-col relative"
                 >
-                  <div className="h-40 overflow-hidden relative">
-                    {cow.photo ? (
+                  {/* Photo Header */}
+                  <div className="h-44 overflow-hidden relative bg-[#EEF5F0] dark:bg-[#06140E]">
+                    <div className="absolute inset-0 flex items-center justify-center text-6xl group-hover:scale-105 transition-transform duration-500">
+                      {cow.animalType === 'Sheep' ? '🐑' : cow.animalType === 'Goat' ? '🐐' : cow.animalType === 'Buffalo' ? '🐃' : '🐄'}
+                    </div>
+
+                    {cow.photo && (
                       <img
                         src={cow.photo}
                         alt={cow.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        className="relative w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 z-1"
                       />
-                    ) : (
-                      <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-500">
-                        {cow.animalType === 'Sheep' ? '🐑' : cow.animalType === 'Goat' ? '🐐' : cow.animalType === 'Buffalo' ? '🐃' : '🐄'}
-                      </div>
                     )}
-                    <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold rounded-lg border border-white/10 uppercase tracking-widest">
-                      {t('Collar ID')}: {cow.id}
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 z-2" />
+
+                    {/* Top Badges */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                      <div className="px-2.5 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-mono font-bold rounded-xl border border-white/10 uppercase tracking-wider flex items-center gap-1">
+                        <Cpu size={12} className="text-emerald-400" />
+                        <span>ID: {cow.id}</span>
+                      </div>
+                    </div>
+
+                    {/* 3-Dot Actions Menu */}
+                    <div className="absolute top-3 right-3" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu
+                        trigger={
+                          <button
+                            type="button"
+                            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md text-white hover:bg-black/80 flex items-center justify-center transition-colors border border-white/10"
+                            title={t('Collar Options')}
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                        }
+                      >
+                        <DropdownMenuItem
+                          icon={Eye}
+                          onClick={() => handleSelectCattle(cow.id)}
+                        >
+                          {t('View Details', 'விவரங்கள்')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          icon={Edit}
+                          onClick={(e) => handleEditClick(e, cow)}
+                        >
+                          {t('Edit Collar', 'காலர் மாற்று')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          destructive
+                          icon={Trash2}
+                          onClick={(e) => handleDeleteClick(e, cow)}
+                        >
+                          {t('Delete Collar', 'காலர் நீக்கு')}
+                        </DropdownMenuItem>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Bottom overlay info */}
+                    <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white z-3">
+                      <span className="text-[11px] font-bold tracking-wide flex items-center gap-1 text-[#DDEADF]">
+                        <Radio size={12} className="text-emerald-400 animate-pulse" />
+                        {cow.deviceStatus || 'Online'}
+                      </span>
+                      <div className="flex items-center gap-1 text-[11px] font-bold">
+                        <Battery size={13} className={batt < 20 ? 'text-rose-400' : 'text-emerald-400'} />
+                        <span>{batt}%</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-4 flex-1 flex flex-col justify-between">
+
+                  {/* Body Content */}
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                     <div>
-<div className="flex justify-between items-start">
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white font-display mb-1">{cow.name}</h3>
-                        <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-bold text-slate-500">
-                          {vacCount} {t('Vaccines', 'தடுப்பூசி', 'टीके')}
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <h3 className="text-xl font-black text-[#103B2D] dark:text-white font-display group-hover:text-[#4B8A64] transition-colors">
+                            {cow.name}
+                          </h3>
+                          <p className="text-xs text-[#5A7065] dark:text-[#9FB5AA] font-semibold mt-0.5">
+                            {t(cow.breed)} • {cow.age}
+                          </p>
+                        </div>
+                        <span className="text-[10px] bg-[#EEF5F0] dark:bg-[#174D38]/40 text-[#174D38] dark:text-[#A8D5BA] px-2 py-1 rounded-lg font-bold border border-[#DDEADF]/50 dark:border-[#174D38]/50 shrink-0">
+                          {vacCount} {t('Vaccines', 'தடுப்பூசி')}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 font-bold">{t(cow.breed)} • {cow.age}</p>                    </div>
-                    
-                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+
+                      {/* Vitals Summary Pill */}
+                      <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-[#DDEADF]/60 dark:border-[#174D38]/60 text-xs">
+                        <div className="flex items-center gap-1.5 text-[#5A7065] dark:text-[#9FB5AA]">
+                          <Heart size={14} className="text-rose-500" />
+                          <span className="font-bold text-[#103B2D] dark:text-white">{cow.telemetry?.heartRate || 72} BPM</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[#5A7065] dark:text-[#9FB5AA]">
+                          <Thermometer size={14} className="text-amber-500" />
+                          <span className="font-bold text-[#103B2D] dark:text-white">{cow.telemetry?.temperature || 38.6}°C</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Status Bar */}
+                    <div className="pt-3 border-t border-[#DDEADF]/60 dark:border-[#174D38]/60 flex items-center justify-between">
                       <div className={`flex items-center gap-1.5 text-xs font-bold ${
                         isEmergency ? 'text-rose-600' : isWarning ? 'text-amber-600' : 'text-emerald-600'
                       }`}>
-                        {isEmergency ? <AlertTriangle size={14} className="animate-pulse" /> :
-                         isWarning ? <AlertTriangle size={14} /> :
-                         <ShieldCheck size={14} />}
+                        {isEmergency ? <AlertTriangle size={15} className="animate-pulse" /> :
+                         isWarning ? <AlertTriangle size={15} /> :
+                         <ShieldCheck size={15} />}
                         <span>
-                          {isEmergency ? t('Emergency', 'அவசரம்', 'आपातकाल') :
+                          {isEmergency ? t('Emergency', 'அவசரம்', 'ஆபாத்', 'आपातकाल') :
                            isWarning ? t('Warning', 'எச்சரிக்கை', 'चेतावनी') :
                            t('Healthy', 'ஆரோக்கியம்', 'स्वस्थ')}
                         </span>
                       </div>
 
-                      <span className="text-[11px] text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1">
-                        <Pill size={12} />
-                        {medCount} {t('Treatments', 'சிகிச்சை', 'उपचार')}
+                      <span className="text-[11px] text-[#4B8A64] dark:text-[#A8D5BA] font-bold flex items-center gap-1">
+                        <Pill size={13} />
+                        {medCount} {t('Treatments', 'சிகிச்சை')}
                       </span>
                     </div>
                   </div>
@@ -167,64 +414,113 @@ export default function CattleDetails() {
             })}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
-              <Search size={24} />
+          /* Empty Search / Fleet State */
+          <div className="text-center py-20 bg-white dark:bg-[#0D2219] rounded-3xl border border-dashed border-[#DDEADF] dark:border-[#174D38]/60 p-8">
+            <div className="w-16 h-16 bg-[#EEF5F0] dark:bg-[#174D38]/40 text-[#4B8A64] rounded-3xl flex items-center justify-center mx-auto mb-4">
+              <Cpu size={28} />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white font-display">
-              {t('No cattle found', 'மாடுகள் கிடைக்கவில்லை', 'कोई मवेशी नहीं मिला')}
+            <h3 className="text-xl font-bold text-[#103B2D] dark:text-white font-display">
+              {searchQuery ? t('No matching livestock found') : t('No collars registered yet')}
             </h3>
-            <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
-              {t('Try adjusting your search query or check the Collar ID again.', 'உங்கள் தேடலை மாற்றி மீண்டும் தேடவும்.', 'अपनी खोज क्वेरी को समायोजित करने का प्रयास करें।')}
+            <p className="text-[#5A7065] dark:text-[#9FB5AA] text-sm mt-1.5 max-w-md mx-auto">
+              {searchQuery
+                ? t('Try adjusting your search query or check the Collar ID again.')
+                : t('Connect your first BioSense IoT collar to monitor live cattle vitals, location, and vaccinations in real time.')}
             </p>
+            <div className="mt-6 flex justify-center gap-3">
+              {searchQuery ? (
+                <Button variant="secondary" onClick={() => setSearchQuery('')}>
+                  {t('Clear Search')}
+                </Button>
+              ) : null}
+              <Button variant="default" onClick={() => setShowAddModal(true)}>
+                <Plus size={18} />
+                <span>{t('Register New Collar', 'புதிய காலர் சேர்')}</span>
+              </Button>
+            </div>
           </div>
         )}
+
+        {/* Add Collar Dialog */}
+        <CollarFormDialog
+          open={showAddModal}
+          onOpenChange={setShowAddModal}
+          initialData={null}
+          existingCattle={cattle}
+          onSubmit={addCollar}
+          t={t}
+        />
+
+        {/* Edit Collar Dialog */}
+        <CollarFormDialog
+          open={Boolean(editingCollar)}
+          onOpenChange={(open) => !open && setEditingCollar(null)}
+          initialData={editingCollar}
+          existingCattle={cattle}
+          onSubmit={(updates) => updateCollar(editingCollar.id, updates)}
+          t={t}
+        />
+
+        {/* Delete Collar Dialog */}
+        <DeleteCollarDialog
+          open={Boolean(deletingCollar)}
+          onOpenChange={(open) => !open && setDeletingCollar(null)}
+          collar={deletingCollar}
+          onConfirmDelete={removeCollar}
+          t={t}
+        />
       </div>
     );
   }
 
-  // --- 2. DETAIL VIEW LOGIC --- //
-  const cow = cattle.find((c) => c.id === selectedCattleId) || cattle[0];
+  // ---------------------------------------------------------------------------
+  // 2. DETAIL VIEW LOGIC
+  // ---------------------------------------------------------------------------
+  const cow = cattle.find((c) => String(c.id) === String(selectedCattleId)) || cattle[0];
+
+  if (!cow) {
+    return (
+      <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t('No collar selected')}</h3>
+        <Button className="mt-4" onClick={() => setViewMode('list')}>{t('Back to List')}</Button>
+      </div>
+    );
+  }
+
   const hr = cow.telemetry?.heartRate || 72;
   const temp = cow.telemetry?.temperature || 38.6;
-  const batt = cow.telemetry?.battery || 90;
+  const batt = cow.telemetry?.battery ?? 90;
   const status = cow.status || 'Healthy';
-
   const tempF = ((temp * 9) / 5 + 32).toFixed(1);
 
   const cowVaccinations = cow.vaccinations || [];
   const cowTreatments = cow.medicalTreatments || [];
   const cowHealthLogs = cow.healthMonitoringHistory || [];
 
+  // Historical vitals for Recharts
+  const historyData = (cow.history?.timeLabels || ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00']).map((time, idx) => ({
+    time,
+    heartRate: cow.history?.heartRate?.[idx] || 72,
+    temperature: cow.history?.temperature?.[idx] || 38.6
+  }));
+
   let statusBg = 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900';
   let statusText = 'text-emerald-700 dark:text-emerald-400';
   let statusIcon = <ShieldCheck className="text-emerald-500" size={24} />;
-  let statusMsg = t('All vitals are stable. Live sensors indicating normal range.', 'அனைத்து உடல்நிலைகளும் சீராக உள்ளன.', 'सभी महत्वपूर्ण अंग स्थिर हैं।');
+  let statusMsg = t('All vitals are stable. Live sensors indicating normal resting range.', 'அனைத்து உடல்நிலைகளும் சீராக உள்ளன.');
 
   if (status === 'Emergency') {
     statusBg = 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900 animate-pulse';
     statusText = 'text-rose-700 dark:text-rose-400';
     statusIcon = <AlertTriangle className="text-rose-500" size={24} />;
-    
-    if (hr > 105) {
-      statusMsg = t(`Emergency: Heart rate is spiking at ${hr} BPM. Fever check recommended.`, `அவசரம்: இதயத் துடிப்பு ${hr} BPM ஆக அதிகரித்துள்ளது.`, `आपातकाल: हृदय गति ${hr} BPM पर बढ़ रही है।`);
-    } else if (hr < 50) {
-      statusMsg = t(`Emergency: Low heart rate detected (${hr} BPM). Immediate medical checkup needed.`, `அவசரம்: இதயத் துடிப்பு ${hr} BPM ஆகக் குறைந்துள்ளது.`, `आपातकाल: कम हृदय गति (${hr} BPM)।`);
-    } else if (temp > 40.0) {
-      statusMsg = t(`Emergency: Fever detected (${temp}°C / ${tempF}°F). Request a vet consultation.`, `அவசரம்: மாட்டின் வெப்பநிலை ${temp}°C காய்ச்சலை காட்டுகிறது.`, `आपातकाल: बुखार पाया गया (${temp}°C / ${tempF}°F)।`);
-    } else {
-      statusMsg = t('Emergency: GPS geofence boundary breached. Check live tracking map.', 'அவசரம்: மாடு பாதுகாப்பு எல்லையைத் தாண்டியுள்ளது.', 'आपातकाल: जियोफेंस सीमा का उल्लंघन।');
-    }
+    statusMsg = t(`Emergency vital spike: Heart rate is at ${hr} BPM and temperature is at ${temp}°C.`);
   } else if (status === 'Warning') {
     statusBg = 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900';
     statusText = 'text-amber-700 dark:text-amber-400';
     statusIcon = <AlertTriangle className="text-amber-500" size={24} />;
-    
-    if (batt < 20) {
-      statusMsg = t(`Warning: Battery level critical (${batt}%). Please plug in transmitter charger.`, `எச்சரிக்கை: காலர் பேட்டரி அளவு (${batt}%) மிகக் குறைவாக உள்ளது.`, `चेतावनी: बैटरी का स्तर गंभीर (${batt}%)।`);
-    } else {
-      statusMsg = t('Warning: Subtle vital fluctuations. Continue monitoring.', 'எச்சரிக்கை: லேசான உடல்நிலை மாற்றங்கள் உள்ளன.', 'चेतावनी: सूक्ष्म महत्वपूर्ण उतार-चढ़ाव।');
-    }
+    statusMsg = batt < 20 
+      ? t(`Warning: Collar battery level is low (${batt}%). Please recharge transmitter.`)
+      : t('Warning: Minor vital fluctuations detected. Continued observation advised.');
   }
 
   const handleSaveVaccination = async (e) => {
@@ -286,81 +582,109 @@ export default function CattleDetails() {
     });
   };
 
-  const handlePrintPassport = () => {
-    window.print();
-  };
-
   return (
     <div className="space-y-6 font-sans pb-12 max-w-7xl mx-auto print:max-w-none print:p-0">
       
-      {/* Detail Navigation Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm print:hidden">
+      {/* Navigation Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0D2219] p-4 rounded-2xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs print:hidden">
         <button 
           onClick={() => setViewMode('list')}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-xl transition-all w-max border border-slate-200 dark:border-slate-700"
+          className="flex items-center gap-2 px-4 py-2 bg-[#F7F6F0] dark:bg-[#174D38]/30 hover:bg-[#EEF5F0] dark:hover:bg-[#174D38]/50 text-[#103B2D] dark:text-[#DDEADF] font-bold text-sm rounded-xl transition-all w-max border border-[#DDEADF] dark:border-[#174D38]"
         >
           <ArrowLeft size={16} />
           {t('Back to all Cattle', 'அனைத்து மாடுகளுக்கும் திரும்பவும்', 'सभी मवेशियों पर वापस जाएं')}
         </button>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrintPassport}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-200 dark:border-slate-700"
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditingCollar(cow)}
+            className="gap-1.5 border-[#DDEADF] dark:border-[#174D38]"
           >
-            <Printer size={15} />
-            {t('Print Medical Passport', 'மருத்துவ பாஸ்போர்ட் அச்சிடுக', 'पासपोर्ट प्रिंट करें')}
-          </button>
-          <div className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 rounded-lg text-xs font-bold flex items-center gap-1.5">
-            <ShieldCheck size={14} />
-            <span>{t('Live Telemetry Streaming', 'நேரடி தரவு ஸ்ட்ரீமிங்', 'लाइव टेलीमेट्री')}</span>
-          </div>
+            <Edit size={14} />
+            <span>{t('Edit Collar', 'காலர் மாற்று')}</span>
+          </Button>
+
+          <Button
+            variant="subtleRose"
+            size="sm"
+            onClick={() => setDeletingCollar(cow)}
+            className="gap-1.5"
+          >
+            <Trash2 size={14} />
+            <span>{t('Delete Collar', 'நீக்கு')}</span>
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => window.print()}
+            className="gap-1.5"
+          >
+            <Printer size={14} />
+            <span>{t('Print Passport', 'பாஸ்போர்ட் அச்சிடுக')}</span>
+          </Button>
+
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#EEF5F0] dark:bg-[#174D38]/50 text-[#174D38] dark:text-[#A8D5BA] text-xs font-bold">
+            <Radio size={12} className="text-emerald-500 animate-pulse" />
+            <span>{t('Live Telemetry ⚡')}</span>
+          </span>
         </div>
       </div>
 
       {/* Meta Profile Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-3 animate-in fade-in zoom-in-95 duration-300">
-        <div className="md:col-span-1 h-64 md:h-full min-h-[220px]">
-          {cow.photo ? (
+      <div className="bg-white dark:bg-[#0D2219] rounded-3xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs overflow-hidden grid grid-cols-1 md:grid-cols-3 animate-in fade-in zoom-in-95 duration-300">
+        <div className="md:col-span-1 h-64 md:h-full min-h-[220px] relative bg-[#EEF5F0] dark:bg-[#06140E]">
+          <div className="absolute inset-0 flex items-center justify-center text-8xl">
+            {cow.animalType === 'Sheep' ? '🐑' : cow.animalType === 'Goat' ? '🐐' : cow.animalType === 'Buffalo' ? '🐃' : '🐄'}
+          </div>
+          {cow.photo && (
             <img
               src={cow.photo}
               alt={cow.name}
-              className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              className="relative w-full h-full object-cover z-1"
             />
-          ) : (
-            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-8xl">
-              {cow.animalType === 'Sheep' ? '🐑' : cow.animalType === 'Goat' ? '🐐' : cow.animalType === 'Buffalo' ? '🐃' : '🐄'}
-            </div>
           )}
+          <div className="absolute top-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-mono font-bold rounded-lg border border-white/10 uppercase z-2">
+            {t('Collar ID')}: {cow.id}
+          </div>
         </div>
 
         <div className="md:col-span-2 p-6 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-teal-600 dark:text-teal-400 tracking-widest uppercase">
-                {t('Collar Activated Node', 'காலர் ஐடி பதிவிறக்கம்', 'कॉलर सक्रिय नोड')}
+              <span className="text-xs font-extrabold text-[#4B8A64] dark:text-[#A8D5BA] tracking-widest uppercase flex items-center gap-1.5">
+                <Cpu size={14} />
+                {t('Collar Activated Node', 'காலர் ஐடி பதிவிறக்கம்')}
               </span>
-              <span className="text-xs text-slate-400 font-bold">{t('Collar ID')}: {cow.id}</span>
+              <span className="text-xs text-[#5A7065] dark:text-[#9FB5AA] font-bold">Node UID: #{cow.id}</span>
             </div>
             
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white font-display">{cow.name}</h2>
+            <h2 className="text-3xl font-black text-[#103B2D] dark:text-white font-display flex items-center gap-3">
+              <span>{cow.name}</span>
+              {cow.nickname && (
+                <span className="text-sm font-semibold text-[#5A7065] dark:text-[#9FB5AA]">({cow.nickname})</span>
+              )}
+            </h2>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{t('Breed', 'இனம்', 'नस्ल')}</span>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{t(cow.breed)}</p>
+              <div className="p-3 bg-[#F7F6F0] dark:bg-[#06140E] rounded-xl border border-[#DDEADF]/60 dark:border-[#174D38]/60">
+                <span className="text-[10px] text-[#5A7065] dark:text-[#9FB5AA] font-bold uppercase">{t('Breed', 'இனம்')}</span>
+                <p className="text-xs font-bold text-[#103B2D] dark:text-white mt-0.5">{t(cow.breed)}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{t('Age', 'வயது', 'आयु')}</span>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{cow.age}</p>
+              <div className="p-3 bg-[#F7F6F0] dark:bg-[#06140E] rounded-xl border border-[#DDEADF]/60 dark:border-[#174D38]/60">
+                <span className="text-[10px] text-[#5A7065] dark:text-[#9FB5AA] font-bold uppercase">{t('Age', 'வயது')}</span>
+                <p className="text-xs font-bold text-[#103B2D] dark:text-white mt-0.5">{cow.age}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{t('Gender', 'பாலினம்', 'लिंग')}</span>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5">{cow.gender || 'Female'}</p>
+              <div className="p-3 bg-[#F7F6F0] dark:bg-[#06140E] rounded-xl border border-[#DDEADF]/60 dark:border-[#174D38]/60">
+                <span className="text-[10px] text-[#5A7065] dark:text-[#9FB5AA] font-bold uppercase">{t('Gender', 'பாலினம்')}</span>
+                <p className="text-xs font-bold text-[#103B2D] dark:text-white mt-0.5">{cow.gender || 'Female'}</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase">{t('Health Passport', 'பாஸ்போர்ட்', 'पासपोर्ट')}</span>
-                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">BIO-{cow.id}-PASS</p>
+              <div className="p-3 bg-[#F7F6F0] dark:bg-[#06140E] rounded-xl border border-[#DDEADF]/60 dark:border-[#174D38]/60">
+                <span className="text-[10px] text-[#5A7065] dark:text-[#9FB5AA] font-bold uppercase">{t('Health Passport')}</span>
+                <p className="text-xs font-bold text-[#4B8A64] dark:text-[#A8D5BA] mt-0.5">BIO-{cow.id}-PASS</p>
               </div>
             </div>
           </div>
@@ -370,7 +694,7 @@ export default function CattleDetails() {
             <div className="shrink-0 mt-0.5">{statusIcon}</div>
             <div>
               <h4 className={`text-sm font-bold uppercase tracking-wider ${statusText}`}>
-                {status === 'Healthy' ? t('Healthy Vitals Status', 'ஆரோக்கிய நிலை', 'स्वस्थ जीवन शक्ति') : status === 'Warning' ? t('Warning status', 'எச்சரிக்கை நிலை', 'चेतावनी') : t('Emergency Status Alert', 'அவசர நிலை எச்சரிக்கை', 'आपातकाल')}
+                {status === 'Healthy' ? t('Healthy Vitals Status', 'ஆரோக்கிய நிலை') : status === 'Warning' ? t('Warning Status', 'எச்சரிக்கை நிலை') : t('Emergency Status Alert', 'அவசர நிலை எச்சரிக்கை')}
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{statusMsg}</p>
             </div>
@@ -379,203 +703,336 @@ export default function CattleDetails() {
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm gap-1 overflow-x-auto print:hidden">
-        <button
-          onClick={() => setActiveTabSub('telemetry')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTabSub === 'telemetry'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Activity size={15} />
-          {t('Live Telemetry & Vitals', 'நேரலை சென்சார் அளவீடு', 'लाइव टेलीमेट्री')}
-        </button>
-
-        <button
-          onClick={() => setActiveTabSub('vaccines')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTabSub === 'vaccines'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <ShieldCheck size={15} />
-          {t('Vaccination Schedule', 'தடுப்பூசி அட்டவணை', 'टीकाकरण अनुसूची')} ({cowVaccinations.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTabSub('treatments')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTabSub === 'treatments'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Pill size={15} />
-          {t('Medical Treatment History', 'மருத்துவ சிகிச்சை வரலாறு', 'चिकित्सा उपचार इतिहास')} ({cowTreatments.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTabSub('history')}
-          className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
-            activeTabSub === 'history'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Calendar size={15} />
-          {t('Historical Health Audits', 'வரலாற்று உடல்நிலை பதிவுகள்', 'ऐतिहासिक स्वास्थ्य ऑडिट')} ({cowHealthLogs.length})
-        </button>
+      <div className="flex bg-white dark:bg-[#0D2219] p-1.5 rounded-2xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs gap-1 overflow-x-auto print:hidden">
+        {[
+          { id: 'overview', label: t('Overview', 'சுருக்கம்'), icon: Sparkles },
+          { id: 'telemetry', label: t('Live Health & Vitals', 'நேரலை உடல்நிலை'), icon: Activity },
+          { id: 'gps', label: t('GPS & Geofencing', 'ஜிபிஎஸ் வரைபடம்'), icon: MapPin },
+          { id: 'vaccines', label: `${t('Vaccination Records', 'தடுப்பூசி')} (${cowVaccinations.length})`, icon: ShieldCheck },
+          { id: 'treatments', label: `${t('Medical History', 'சிகிச்சை')} (${cowTreatments.length})`, icon: Pill },
+          { id: 'collar', label: t('Collar Hardware', 'காலர் வன்பொருள்'), icon: Cpu }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTabSub === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTabSub(tab.id)}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+                isActive
+                  ? 'bg-[#103B2D] dark:bg-[#174D38] text-white shadow-xs'
+                  : 'text-[#5A7065] dark:text-[#9FB5AA] hover:text-[#103B2D] dark:hover:text-white'
+              }`}
+            >
+              <Icon size={15} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── TAB 1: LIVE SENSOR TELEMETRY ── */}
+      {/* ── TAB: OVERVIEW ── */}
+      {activeTabSub === 'overview' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Vitals Snapshot */}
+            <div className="bg-white dark:bg-[#0D2219] p-6 rounded-3xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs space-y-4">
+              <h4 className="text-sm font-bold uppercase tracking-wider text-[#5A7065] dark:text-[#9FB5AA]">{t('Real-Time Vitals Snapshot')}</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-[#F7F6F0] dark:bg-[#06140E] rounded-2xl">
+                  <div className="flex items-center gap-2.5 text-xs font-bold text-[#5A7065] dark:text-[#9FB5AA]">
+                    <Heart size={16} className="text-rose-500 animate-pulse-heart" />
+                    <span>{t('Heart Rate')}</span>
+                  </div>
+                  <span className="font-extrabold text-sm text-[#103B2D] dark:text-white">{hr} BPM</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-[#F7F6F0] dark:bg-[#06140E] rounded-2xl">
+                  <div className="flex items-center gap-2.5 text-xs font-bold text-[#5A7065] dark:text-[#9FB5AA]">
+                    <Thermometer size={16} className="text-amber-500" />
+                    <span>{t('Body Temperature')}</span>
+                  </div>
+                  <span className="font-extrabold text-sm text-[#103B2D] dark:text-white">{temp}°C ({tempF}°F)</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-[#F7F6F0] dark:bg-[#06140E] rounded-2xl">
+                  <div className="flex items-center gap-2.5 text-xs font-bold text-[#5A7065] dark:text-[#9FB5AA]">
+                    <Battery size={16} className="text-emerald-500" />
+                    <span>{t('Transmitter Battery')}</span>
+                  </div>
+                  <span className="font-extrabold text-sm text-[#103B2D] dark:text-white">{batt}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Medical Log */}
+            <div className="bg-white dark:bg-[#0D2219] p-6 rounded-3xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-[#5A7065] dark:text-[#9FB5AA]">{t('Recent Medical Event')}</h4>
+                <Button variant="ghost" size="sm" onClick={() => setActiveTabSub('treatments')} className="text-xs text-[#4B8A64]">
+                  {t('View All')}
+                </Button>
+              </div>
+              {cowTreatments[0] ? (
+                <div className="p-4 bg-[#EEF5F0]/60 dark:bg-[#174D38]/20 border border-[#DDEADF]/60 dark:border-[#174D38]/40 rounded-2xl space-y-2">
+                  <span className="text-[10px] font-bold text-[#4B8A64] dark:text-[#A8D5BA] uppercase">{cowTreatments[0].date}</span>
+                  <h5 className="font-bold text-sm text-[#103B2D] dark:text-white">{cowTreatments[0].diagnosis}</h5>
+                  <p className="text-xs text-[#5A7065] dark:text-[#9FB5AA] line-clamp-2">{cowTreatments[0].symptomsObserved}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-[#5A7065] italic py-6 text-center">{t('No medical treatments recorded.')}</p>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white dark:bg-[#0D2219] p-6 rounded-3xl border border-[#DDEADF] dark:border-[#174D38]/60 shadow-xs space-y-3 flex flex-col justify-between">
+              <h4 className="text-sm font-bold uppercase tracking-wider text-[#5A7065] dark:text-[#9FB5AA]">{t('Quick Operations')}</h4>
+              <div className="space-y-2">
+                <Button variant="outline" className="w-full justify-start gap-2 text-xs border-[#DDEADF] dark:border-[#174D38]" onClick={() => setActiveTabSub('gps')}>
+                  <MapPin size={15} className="text-[#4B8A64]" />
+                  <span>{t('Inspect Live GPS Map')}</span>
+                </Button>
+                <Button variant="outline" className="w-full justify-start gap-2 text-xs border-[#DDEADF] dark:border-[#174D38]" onClick={() => setShowVacModal(true)}>
+                  <Plus size={15} className="text-emerald-500" />
+                  <span>{t('Log Vaccination')}</span>
+                </Button>
+                <Button variant="outline" className="w-full justify-start gap-2 text-xs border-[#DDEADF] dark:border-[#174D38]" onClick={() => setShowMedModal(true)}>
+                  <Pill size={15} className="text-[#4B8A64]" />
+                  <span>{t('Record Treatment')}</span>
+                </Button>
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => setEditingCollar(cow)} className="w-full">
+                {t('Configure Collar')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: LIVE HEALTH & TELEMETRY ── */}
       {activeTabSub === 'telemetry' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            {/* Heart Rate Dial Card */}
+            {/* Heart Rate Dial */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-48 group">
               <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Heart Rate', 'இதயத்துடிப்பு', 'हृदय गति')}</span>
-                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500 group-hover:scale-105 transition-transform">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Heart Rate')}</span>
+                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/20 flex items-center justify-center text-rose-500">
                   <Heart size={18} className="animate-pulse-heart" />
                 </div>
               </div>
               <div>
                 <h3 className={`text-4xl font-extrabold font-display ${hr > 105 || hr < 50 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
-                  {hr}
+                  {hr} <span className="text-sm font-semibold text-slate-400">BPM</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-1 font-medium">{t('Normal: 60-90 BPM (Resting)', 'வழக்கமான அளவு: 60-90 BPM', 'सामान्य: 60-90 BPM')}</p>
+                <p className="text-xs text-slate-400 mt-1 font-medium">{t('Normal resting: 60-90 BPM')}</p>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${
-                    hr > 105 || hr < 50 ? 'bg-rose-500' : 'bg-emerald-500'
-                  }`}
+                  className={`h-full transition-all duration-300 ${hr > 105 || hr < 50 ? 'bg-rose-500' : 'bg-emerald-500'}`}
                   style={{ width: `${Math.min((hr / 150) * 100, 100)}%` }}
                 />
               </div>
             </div>
 
-            {/* Temperature Dial Card */}
+            {/* Temperature Dial */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-48 group">
               <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Body Temperature', 'உடல் வெப்பநிலை', 'शरीर का तापमान')}</span>
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center text-amber-500 group-hover:scale-105 transition-transform">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Body Temperature')}</span>
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/20 flex items-center justify-center text-amber-500">
                   <Thermometer size={18} />
                 </div>
               </div>
               <div>
-                <h3 className={`text-4xl font-extrabold font-display ${temp > 40.0 ? 'text-rose-500 font-black' : 'text-slate-900 dark:text-white'}`}>
+                <h3 className={`text-4xl font-extrabold font-display ${temp > 40.0 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
                   {temp}°C
                 </h3>
-                <p className="text-xs text-slate-400 mt-1 font-medium">
-                  {tempF}°F • {t('Normal: 38.5 - 39.5°C', 'வழக்கமான அளவு: 38.5 - 39.5°C', 'सामान्य: 38.5 - 39.5°C')}
-                </p>
+                <p className="text-xs text-slate-400 mt-1 font-medium">{tempF}°F • {t('Normal: 38.5 - 39.5°C')}</p>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${
-                    temp > 40.0 ? 'bg-rose-500' : 'bg-emerald-500'
-                  }`}
+                  className={`h-full transition-all duration-300 ${temp > 40.0 ? 'bg-rose-500' : 'bg-emerald-500'}`}
                   style={{ width: `${Math.min(((temp - 35) / 10) * 100, 100)}%` }}
                 />
               </div>
             </div>
 
-            {/* GPS Coordinate Card */}
+            {/* GPS Summary */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-48 group">
               <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Live GPS Coordinates', 'ஜிபிஎஸ் இருப்பிடம்', 'लाइव जीपीएस')}</span>
-                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center text-teal-500 group-hover:scale-105 transition-transform">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Live GPS Coordinates')}</span>
+                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center text-teal-500">
                   <MapPin size={18} />
                 </div>
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {cow.telemetry?.gps?.lat?.toFixed(5) || '11.07780'} N
+                <h4 className="text-sm font-mono font-bold text-slate-800 dark:text-slate-100 truncate">
+                  {cow.telemetry?.gps?.lat?.toFixed(5) || '11.07780'}° N
                 </h4>
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {cow.telemetry?.gps?.lng?.toFixed(5) || '77.14287'} E
+                <h4 className="text-sm font-mono font-bold text-slate-800 dark:text-slate-100 truncate">
+                  {cow.telemetry?.gps?.lng?.toFixed(5) || '77.14287'}° E
                 </h4>
-                <p className="text-[10px] text-slate-400 mt-1 font-medium">{t('Transmitting via NEO-6M', 'NEO-6M ஜிபிஎஸ்', 'NEO-6M द्वारा')}</p>
+                <p className="text-[10px] text-slate-400 mt-1">{t('Transmitting via NEO-6M GPS')}</p>
               </div>
-              <div className="text-xs text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 py-1.5 px-2.5 rounded-lg flex justify-between items-center">
-                <span>{t('Geofence Safe Zone', 'பாதுகாப்பு எல்லை', 'सुरक्षित क्षेत्र')}</span>
-                <span className="text-emerald-500 font-bold">
-                  {t('INSIDE', 'உள்ளே', 'अंदर')}
-                </span>
+              <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 py-1.5 px-2.5 rounded-lg flex justify-between items-center">
+                <span>{t('Geofence Safe Zone')}</span>
+                <span>{t('INSIDE 🟢')}</span>
               </div>
             </div>
 
-            {/* Battery Telemetry Card */}
+            {/* Battery Status */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-48 group">
               <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Battery Status', 'பேட்டரி நிலை', 'बैटरी स्थिति')}</span>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${batt < 20 ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-500 animate-pulse' : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500'}`}>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Collar Battery')}</span>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${batt < 20 ? 'bg-rose-50 text-rose-500 animate-pulse' : 'bg-emerald-50 text-emerald-500'}`}>
                   <Battery size={18} />
                 </div>
               </div>
               <div>
-                <h3 className={`text-4xl font-extrabold font-display ${batt < 20 ? 'text-rose-500 font-black' : 'text-slate-900 dark:text-white'}`}>
+                <h3 className={`text-4xl font-extrabold font-display ${batt < 20 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
                   {batt}%
                 </h3>
-                <p className="text-xs text-slate-400 mt-1 font-medium">
-                  {batt < 20 ? t('Charge Immediately', 'உடனடியாக சார்ஜ் செய்யவும்', 'तुरंत चार्ज करें') : t('Collar Transmitting', 'செயல்பாட்டில் உள்ளது', 'ट्रांसमीटर चालू')}
-                </p>
+                <p className="text-xs text-slate-400 mt-1 font-medium">{batt < 20 ? t('Charge Immediately') : t('Collar Transmitting')}</p>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${
-                    batt < 20 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'
-                  }`}
+                  className={`h-full transition-all duration-300 ${batt < 20 ? 'bg-rose-500' : 'bg-emerald-500'}`}
                   style={{ width: `${batt}%` }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Quick Action Navigation Buttons */}
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={() => setActiveTab('gps')}
-              className="flex-1 min-w-[200px] p-4 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-md transition-all"
-            >
-              <MapPin size={18} />
-              <span>{t('View Live Tracking Map', 'நேரடி வரைபடத்தைக் காண்க', 'लाइव ट्रैकिंग देखें')}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('cattle-analytics')}
-              className="flex-1 min-w-[200px] p-4 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-sm transition-all"
-            >
-              <Eye size={18} className="text-emerald-500" />
-              <span>{t('View Health Charts History', 'சுகாதார வரைபடங்கள்', 'स्वास्थ्य चार्ट देखें')}</span>
-            </button>
+          {/* Recharts Vitals Trend Card */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white font-display">
+                  {t('24-Hour Heart Rate & Temperature Trend', 'இதயத்துடிப்பு & வெப்பநிலை வரலாறு')}
+                </h4>
+                <p className="text-xs text-slate-400">{t('Real-time sensor intervals streamed from collar transmitter')}</p>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-bold">
+                <span className="flex items-center gap-1.5 text-rose-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Heart Rate (BPM)
+                </span>
+                <span className="flex items-center gap-1.5 text-teal-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-teal-500" /> Temperature (°C)
+                </span>
+              </div>
+            </div>
+
+            <div className="h-64 w-full pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historyData}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                  <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} />
+                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <RechartsTooltip />
+                  <Line type="monotone" dataKey="heartRate" stroke="#f43f5e" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="temperature" stroke="#0d9488" strokeWidth={2.5} dot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── TAB 2: VACCINATION RECORDS & SCHEDULE ── */}
+      {/* ── TAB: GPS LOCATION & GEOFENCING ── */}
+      {activeTabSub === 'gps' && (
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
+                <MapPin className="text-teal-500" size={22} />
+                <span>{t('Live GPS Position & Grazing Geofence', 'ஜிபிஎஸ் நேரலை வரைபடம்')}</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                {t('Collar GPS transmitter broadcasts exact coordinates every 5 seconds with geofence breach alert.')}
+              </p>
+            </div>
+
+            <Button variant="default" size="sm" onClick={() => setActiveTab('gps')}>
+              <Compass size={16} />
+              <span>{t('Open Full GPS Command Map')}</span>
+            </Button>
+          </div>
+
+          <div className="h-96 w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
+            <MapContainer
+              center={[cow.telemetry?.gps?.lat || 11.077809, cow.telemetry?.gps?.lng || 77.142879]}
+              zoom={16}
+              scrollWheelZoom={false}
+              className="h-full w-full"
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker
+                position={[cow.telemetry?.gps?.lat || 11.077809, cow.telemetry?.gps?.lng || 77.142879]}
+                icon={cowMarkerIcon}
+              >
+                <Popup>
+                  <div className="p-1">
+                    <p className="font-bold text-sm text-slate-900">{cow.name}</p>
+                    <p className="text-xs text-slate-600">Collar ID: #{cow.id}</p>
+                    <p className="text-xs text-emerald-600 font-bold mt-1">Battery: {batt}% • Status: {status}</p>
+                  </div>
+                </Popup>
+              </Marker>
+              <Circle
+                center={[11.077809, 77.142879]}
+                radius={250}
+                pathOptions={{ color: '#059669', fillColor: '#10b981', fillOpacity: 0.15 }}
+              />
+            </MapContainer>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t('Latitude')}</span>
+              <p className="text-sm font-mono font-bold text-slate-900 dark:text-white mt-1">
+                {cow.telemetry?.gps?.lat?.toFixed(6) || '11.077809'}° N
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t('Longitude')}</span>
+              <p className="text-sm font-mono font-bold text-slate-900 dark:text-white mt-1">
+                {cow.telemetry?.gps?.lng?.toFixed(6) || '77.142879'}° E
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t('Geofence Radius')}</span>
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                250 meters (Safe Grazing)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: VACCINATION RECORDS & SCHEDULE ── */}
       {activeTabSub === 'vaccines' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-6 animate-in fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-black text-slate-900 dark:text-white font-display flex items-center gap-2">
                 <ShieldCheck className="text-emerald-500" size={22} />
-                {t(`Vaccination Passport: ${cow.name}`, `${cow.name}-இன் தடுப்பூசி விவரங்கள்`, `${cow.name} का टीकाकरण पासपोर्ट`)}
+                {t(`Vaccination Passport: ${cow.name}`, `${cow.name}-இன் தடுப்பூசி விவரங்கள்`)}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                {t('Immunization timeline, completed doses, and upcoming booster reminders.', 'செலுத்தப்பட்ட தடுப்பூசிகள் மற்றும் அடுத்த தவணைகள்.', 'टीकाकरण समयरेखा और आगामी बूस्टर।')}
+                {t('Immunization timeline, completed doses, and upcoming booster reminders.')}
               </p>
             </div>
 
-            <button
+            <Button
+              variant="default"
+              size="sm"
               onClick={() => setShowVacModal(true)}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 w-max"
+              className="gap-2"
             >
               <Plus size={16} />
-              {t('Add Vaccination Record', 'தடுப்பூசி பதிவு சேர்', 'टीकाकरण जोड़ें')}
-            </button>
+              <span>{t('Add Vaccination Record', 'தடுப்பூசி பதிவு சேர்')}</span>
+            </Button>
           </div>
 
           {cowVaccinations.length > 0 ? (
@@ -594,36 +1051,32 @@ export default function CattleDetails() {
                         {vac.name}
                       </h4>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 ${
-                      vac.status === 'Completed'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                    }`}>
-                      {vac.status === 'Completed' ? t('Completed', 'முடிந்தது', 'पूर्ण') : t('Upcoming Booster', 'அடுத்த தவணை', 'आगामी')}
-                    </span>
+                    <Badge variant={vac.status === 'Completed' ? 'emerald' : 'warning'}>
+                      {vac.status === 'Completed' ? t('Completed', 'முடிந்தது') : t('Upcoming Booster', 'அடுத்த தவணை')}
+                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs py-2 border-y border-slate-200/60 dark:border-slate-800/80">
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Date Given', 'செலுத்திய தேதி', 'दिनांक')}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Date Given', 'செலுத்திய தேதி')}</span>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{vac.dateAdministered}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Next Due Date', 'அடுத்த தவணை', 'अगला बूस्टर')}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Next Due Date', 'அடுத்த தவணை')}</span>
                       <p className="font-bold text-emerald-600 dark:text-emerald-400">{vac.nextDueDate || 'Annual'}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Dosage & Route', 'அளவு', 'खुराक')}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Dosage & Route', 'அளவு')}</span>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{vac.dosage}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Batch #', 'பேட்ச் எண்', 'बैच नं')}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">{t('Batch #', 'பேட்ச் எண்')}</span>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{vac.batchNo}</p>
                     </div>
                   </div>
 
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-                    <p><strong>{t('Administered by:', 'மருத்துவர்:', 'प्रशासक:')}</strong> {vac.administeredBy}</p>
+                    <p><strong>{t('Administered by:', 'மருத்துவர்:')}</strong> {vac.administeredBy}</p>
                     {vac.notes && <p className="italic text-slate-600 dark:text-slate-400">"{vac.notes}"</p>}
                   </div>
                 </div>
@@ -632,39 +1085,43 @@ export default function CattleDetails() {
           ) : (
             <div className="text-center py-12 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
               <ShieldCheck className="mx-auto text-slate-400 mb-2" size={32} />
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('No vaccination records logged yet', 'தடுப்பூசி பதிவுகள் இல்லை', 'कोई टीकाकरण रिकॉर्ड नहीं')}</p>
-              <button
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('No vaccination records logged yet')}</p>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowVacModal(true)}
-                className="mt-3 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                className="mt-3 text-emerald-600"
               >
-                + {t('Add First Vaccination', 'முதல் தடுப்பூசியைப் பதிவு செய்', 'पहला टीका जोड़ें')}
-              </button>
+                + {t('Add First Vaccination')}
+              </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* ── TAB 3: MEDICAL TREATMENT & PRESCRIPTIONS ── */}
+      {/* ── TAB: MEDICAL TREATMENT & PRESCRIPTIONS ── */}
       {activeTabSub === 'treatments' && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-6 animate-in fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-black text-slate-900 dark:text-white font-display flex items-center gap-2">
                 <Pill className="text-teal-500" size={22} />
-                {t(`Medical & Clinical Storage: ${cow.name}`, `${cow.name}-இன் மருத்துவ சிகிச்சை பதிவுகள்`, `${cow.name} का चिकित्सा इतिहास`)}
+                {t(`Medical History & Tele-Care: ${cow.name}`)}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                {t('Diagnosed illnesses, veterinary prescriptions, medicines administered, and recovery outcomes.', 'நோய் சிகிச்சை வரலாறு மற்றும் மருந்து விவரங்கள்.', 'निदान की गई बीमारियाँ और पशु चिकित्सक नुस्खे।')}
+                {t('Recorded clinical diagnoses, active antibiotic courses, and follow-up schedules.')}
               </p>
             </div>
 
-            <button
+            <Button
+              variant="teal"
+              size="sm"
               onClick={() => setShowMedModal(true)}
-              className="px-4 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 w-max"
+              className="gap-2"
             >
               <Plus size={16} />
-              {t('Add Medical Treatment', 'சிகிச்சை பதிவு சேர்', 'उपचार जोड़ें')}
-            </button>
+              <span>{t('Record Medical Treatment', 'மருத்துவ பதிவு சேர்')}</span>
+            </Button>
           </div>
 
           {cowTreatments.length > 0 ? (
@@ -672,59 +1129,49 @@ export default function CattleDetails() {
               {cowTreatments.map((med) => (
                 <div
                   key={med.id}
-                  className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-3"
+                  className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-teal-600 dark:text-teal-400">{med.date}</span>
-                        <span className="text-xs text-slate-400">•</span>
-                        <span className="text-xs text-slate-500 font-bold">{med.severity} {t('Severity', 'தீவிரம்', 'गंभीरता')}</span>
+                        <span className="text-xs font-mono font-bold text-slate-400">{med.date}</span>
+                        <Badge variant={med.severity === 'Severe' ? 'destructive' : med.severity === 'Moderate' ? 'warning' : 'emerald'}>
+                          {med.severity}
+                        </Badge>
                       </div>
-                      <h4 className="text-lg font-black text-slate-900 dark:text-white font-display mt-1">
+                      <h4 className="text-base font-black text-slate-900 dark:text-white font-display mt-1">
                         {med.diagnosis}
                       </h4>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider w-max ${
-                      med.recoveryStatus === 'Fully Recovered'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                    }`}>
-                      {med.recoveryStatus}
-                    </span>
+
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 px-3 py-1 rounded-full border border-teal-200 dark:border-teal-900">
+                        {med.recoveryStatus || 'Under Treatment'}
+                      </span>
+                    </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    <strong>{t('Symptoms Observed:', 'அறிகுறிகள்:', 'लक्षण:')}</strong> {med.symptomsObserved}
+                  <p className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                    <strong>{t('Clinical Observations:')}</strong> {med.symptomsObserved}
                   </p>
 
-                  {/* Prescriptions list */}
                   {med.prescriptions && med.prescriptions.length > 0 && (
-                    <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5">
-                        <Pill size={12} />
-                        {t('Prescribed Medications & Regimen', 'பரிந்துரைக்கப்பட்ட மருந்துகள்', 'निर्धारित दवाएं')}
-                      </span>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {med.prescriptions.map((rx, idx) => (
-                          <div key={idx} className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-lg text-xs flex justify-between items-center">
-                            <span className="font-bold text-slate-800 dark:text-slate-200">• {rx.drug}</span>
-                            <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">{rx.dosage} ({rx.duration})</span>
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('Prescribed Rx Protocol:')}</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {med.prescriptions.map((rx, rIdx) => (
+                          <div key={rIdx} className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                            <p className="font-bold text-slate-800 dark:text-slate-200">{rx.drug}</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{rx.dosage} • {rx.duration}</p>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/60 dark:border-slate-800/80 gap-2">
-                    <div>
-                      <strong>{t('Attending Vet:', 'மருத்துவர்:', 'चिकित्सक:')}</strong> {med.treatingDoctor} ({med.clinic})
-                    </div>
-                    {med.notes && (
-                      <div className="italic text-emerald-600 dark:text-emerald-400">
-                        {med.notes}
-                      </div>
-                    )}
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                    <span>{t('Treating Vet:')} <strong>{med.treatingDoctor}</strong></span>
+                    {med.followUpDate && <span>{t('Follow-up:')} <strong>{med.followUpDate}</strong></span>}
                   </div>
                 </div>
               ))}
@@ -732,352 +1179,258 @@ export default function CattleDetails() {
           ) : (
             <div className="text-center py-12 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
               <Pill className="mx-auto text-slate-400 mb-2" size={32} />
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('No medical treatments logged', 'சிகிச்சை பதிவுகள் இல்லை', 'कोई उपचार रिकॉर्ड नहीं')}</p>
-              <button
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('No medical treatments recorded')}</p>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowMedModal(true)}
-                className="mt-3 text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline"
+                className="mt-3 text-teal-600"
               >
-                + {t('Add Treatment Entry', 'சிகிச்சை பதிவு சேர்', 'उपचार जोड़ें')}
-              </button>
+                + {t('Log First Treatment')}
+              </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* ── TAB 4: HISTORICAL HEALTH AUDITS ── */}
-      {activeTabSub === 'history' && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-6 animate-in fade-in">
-          <div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white font-display flex items-center gap-2">
-              <Calendar className="text-indigo-500" size={22} />
-              {t(`Historical Vital Checkups & Health Audits: ${cow.name}`, `${cow.name}-இன் வரலாற்று உடல்நிலை தணிக்கை`, `${cow.name} का स्वास्थ्य इतिहास`)}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              {t('How health and sensor vitals were monitored previously across different dates.', 'சென்சார் மற்றும் உடல்நிலை எவ்வாறு முன்பு கண்காணிக்கப்பட்டது.', 'पिछले स्वास्थ्य और सेंसर रुझान।')}
-            </p>
+      {/* ── TAB: COLLAR HARDWARE DIAGNOSTICS ── */}
+      {activeTabSub === 'collar' && (
+        <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white font-display flex items-center gap-2">
+                <Cpu className="text-emerald-500" size={22} />
+                <span>{t('Collar Hardware & Sensor Telemetry Node')}</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                {t('Physical collar device parameters, sensor calibration, and wireless connectivity status.')}
+              </p>
+            </div>
+
+            <Button variant="default" size="sm" onClick={() => setEditingCollar(cow)}>
+              <Edit size={16} />
+              <span>{t('Edit Collar Metadata')}</span>
+            </Button>
           </div>
 
-          <div className="space-y-4">
-            {cowHealthLogs.map((log) => (
-              <div
-                key={log.id}
-                className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">{log.date}</span>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{log.vetCheckupSummary}</h4>
-                  <div className="flex flex-wrap gap-3 text-xs text-slate-500 pt-1">
-                    <span><strong>{t('Activity:', 'செயல்பாடு:', 'गतिविधि:')}</strong> {log.activityLevel}</span>
-                    <span>•</span>
-                    <span><strong>{t('Rumination:', 'அசைபோடுதல்:', 'जुगाली:')}</strong> {log.ruminationMinutes} mins/day</span>
-                    <span>•</span>
-                    <span><strong>{t('Incident Alerts:', 'எச்சரிக்கைகள்:', 'अलर्ट:')}</strong> {log.alertIncidentCount}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 pt-1">Source: {log.monitoredBy}</p>
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t('Collar Hardware ID')}</span>
+              <p className="text-base font-mono font-black text-slate-900 dark:text-white mt-1">#{cow.id}</p>
+              <span className="text-[10px] text-emerald-600 font-bold">Stable Device Identifier</span>
+            </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-center px-3 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 min-w-[70px]">
-                    <span className="text-[9px] text-slate-400 font-bold uppercase">{t('Avg HR', 'இதயம்', 'एचआर')}</span>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">{log.avgHeartRate} BPM</p>
-                  </div>
-                  <div className="text-center px-3 py-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 min-w-[70px]">
-                    <span className="text-[9px] text-slate-400 font-bold uppercase">{t('Avg Temp', 'வெப்பநிலை', 'तापमान')}</span>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">{log.avgTemp}°C</p>
-                  </div>
-                  <div className="text-center px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-900 min-w-[80px]">
-                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">{t('Health Score', 'மதிப்பெண்', 'स्कोर')}</span>
-                    <p className="text-sm font-black text-emerald-700 dark:text-emerald-300">{log.healthScore}/100</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t('Firmware Version')}</span>
+              <p className="text-base font-mono font-black text-slate-900 dark:text-white mt-1">v2.4.1-BLE</p>
+              <span className="text-[10px] text-slate-400">Up to date</span>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t('Wireless Transceiver')}</span>
+              <p className="text-base font-bold text-slate-900 dark:text-white mt-1">ESP32 + 4G LTE</p>
+              <span className="text-[10px] text-emerald-600 font-bold">Signal: -68 dBm (Strong)</span>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">{t('Sensor Package')}</span>
+              <p className="text-base font-bold text-slate-900 dark:text-white mt-1">MAX30102 + DS18B20</p>
+              <span className="text-[10px] text-slate-400">PPG & Contact Probe</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+            <h5 className="text-xs font-bold uppercase text-slate-500">{t('Owner & Association')}</h5>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              {t('Linked Farmer ID:')} <span className="font-mono text-emerald-600">{cow.farmerId || 'farmer-uma'}</span>
+            </p>
+            {cow.notes && (
+              <p className="text-xs text-slate-500 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                <strong>{t('Herd Notes:')}</strong> {cow.notes}
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {/* ── MODAL: ADD VACCINATION ── */}
+      {/* Edit Collar Dialog */}
+      <CollarFormDialog
+        open={Boolean(editingCollar)}
+        onOpenChange={(open) => !open && setEditingCollar(null)}
+        initialData={editingCollar}
+        existingCattle={cattle}
+        onSubmit={(updates) => updateCollar(editingCollar.id, updates)}
+        t={t}
+      />
+
+      {/* Delete Collar Dialog */}
+      <DeleteCollarDialog
+        open={Boolean(deletingCollar)}
+        onOpenChange={(open) => !open && setDeletingCollar(null)}
+        collar={deletingCollar}
+        onConfirmDelete={async (id) => {
+          await removeCollar(id);
+          setViewMode('list');
+        }}
+        t={t}
+      />
+
+      {/* Vaccination Modal */}
       {showVacModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden">
-            <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck size={22} />
-                <h3 className="font-bold font-display text-base">{t(`Add Vaccine for ${cow.name}`, `${cow.name}-க்கு தடுப்பூசி சேர்`, `${cow.name} के लिए टीका जोड़ें`)}</h3>
-              </div>
-              <button onClick={() => setShowVacModal(false)} className="p-1 rounded-lg hover:bg-white/20 text-white">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">
+                {t('Add Vaccination Record', 'தடுப்பூசி பதிவு சேர்க்க')}
+              </h3>
+              <button onClick={() => setShowVacModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveVaccination} className="p-6 space-y-4">
+            <form onSubmit={handleSaveVaccination} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                  {t('Vaccine Name', 'தடுப்பூசி பெயர்', 'टीके का नाम')} *
-                </label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Vaccine Name')}</label>
                 <input
-                  type="text"
                   required
-                  placeholder="e.g. FMD Bi-annual Booster Dose"
+                  type="text"
+                  placeholder="e.g. FMD Bi-annual Booster"
                   value={vacForm.name}
                   onChange={(e) => setVacForm({ ...vacForm, name: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
+                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Target Disease', 'இலக்கு நோய்', 'लक्षित रोग')}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Foot-and-Mouth Disease"
-                    value={vacForm.diseaseTarget}
-                    onChange={(e) => setVacForm({ ...vacForm, diseaseTarget: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Status', 'நிலை', 'स्थिति')}
-                  </label>
-                  <select
-                    value={vacForm.status}
-                    onChange={(e) => setVacForm({ ...vacForm, status: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-bold"
-                  >
-                    <option value="Completed">{t('Completed', 'முடிந்தது', 'पूर्ण')}</option>
-                    <option value="Upcoming">{t('Upcoming Due', 'அடுத்த தவணை', 'आगामी')}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Date Administered', 'செலுத்திய தேதி', 'दिनांक')}
-                  </label>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Date Administered')}</label>
                   <input
                     type="date"
                     value={vacForm.dateAdministered}
                     onChange={(e) => setVacForm({ ...vacForm, dateAdministered: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
+                    className="w-full mt-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Next Due Date', 'அடுத்த தவணை தேதி', 'अगली देय तिथि')}
-                  </label>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Next Due Date')}</label>
                   <input
                     type="date"
                     value={vacForm.nextDueDate}
                     onChange={(e) => setVacForm({ ...vacForm, nextDueDate: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
+                    className="w-full mt-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs"
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Dosage & Route', 'அளவு', 'खुराक')}
-                  </label>
-                  <input
-                    type="text"
-                    value={vacForm.dosage}
-                    onChange={(e) => setVacForm({ ...vacForm, dosage: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Batch / Vial No.', 'பேட்ச் எண்', 'बैच संख्या')}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. FMD-TN-2026"
-                    value={vacForm.batchNo}
-                    onChange={(e) => setVacForm({ ...vacForm, batchNo: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                  {t('Administered By (Veterinarian)', 'மருத்துவர் பெயர்', 'पशु चिकित्सक')}
-                </label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Batch Number')}</label>
                 <input
                   type="text"
-                  value={vacForm.administeredBy}
-                  onChange={(e) => setVacForm({ ...vacForm, administeredBy: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
+                  placeholder="e.g. FMD-TN-2026-09"
+                  value={vacForm.batchNo}
+                  onChange={(e) => setVacForm({ ...vacForm, batchNo: e.target.value })}
+                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Clinical Notes')}</label>
+                <textarea
+                  rows={2}
+                  value={vacForm.notes}
+                  onChange={(e) => setVacForm({ ...vacForm, notes: e.target.value })}
+                  className="w-full mt-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowVacModal(false)}
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-xs"
-                >
-                  {t('Cancel', 'ரத்து', 'रद्द करें')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md"
-                >
-                  {t('Save Vaccination', 'சேமிக்கவும்', 'सुरक्षित करें')}
-                </button>
+              <div className="flex justify-end gap-2 pt-3">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setShowVacModal(false)}>
+                  {t('Cancel')}
+                </Button>
+                <Button variant="default" size="sm" type="submit">
+                  {t('Save Record')}
+                </Button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ── MODAL: ADD MEDICAL TREATMENT ── */}
+      {/* Treatment Modal */}
       {showMedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full overflow-hidden">
-            <div className="p-5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white flex justify-between items-center">
-              <div className="flex items-center gap-2.5">
-                <Pill size={22} />
-                <h3 className="font-bold font-display text-base">{t(`Add Treatment Record for ${cow.name}`, `${cow.name}-க்கு சிகிச்சை சேர்`, `${cow.name} के लिए उपचार जोड़ें`)}</h3>
-              </div>
-              <button onClick={() => setShowMedModal(false)} className="p-1 rounded-lg hover:bg-white/20 text-white">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">
+                {t('Record Medical Treatment', 'மருத்துவ சிகிச்சை சேர்க்க')}
+              </h3>
+              <button onClick={() => setShowMedModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveTreatment} className="p-6 space-y-4">
+            <form onSubmit={handleSaveTreatment} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                  {t('Diagnosis / Ailment', 'நோய் கண்டறிதல்', 'रोग निदान')} *
-                </label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Diagnosis / Condition')}</label>
                 <input
-                  type="text"
                   required
-                  placeholder="e.g. Mild Mastitis / Bloat / Indigestion"
+                  type="text"
+                  placeholder="e.g. Mild Mastitis, Rumen Acidosis"
                   value={medForm.diagnosis}
                   onChange={(e) => setMedForm({ ...medForm, diagnosis: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
+                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Severity', 'தீவிரம்', 'गंभीरता')}
-                  </label>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Severity')}</label>
                   <select
                     value={medForm.severity}
                     onChange={(e) => setMedForm({ ...medForm, severity: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-bold"
+                    className="w-full mt-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs"
                   >
-                    <option value="Mild">{t('Mild', 'லேசானது', 'हल्का')}</option>
-                    <option value="Moderate">{t('Moderate', 'மிதமானது', 'मध्यम')}</option>
-                    <option value="Severe">{t('Severe', 'தீவிரமானது', 'गंभीर')}</option>
+                    <option value="Mild">Mild</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Severe">Severe</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Recovery Status', 'மீட்பு நிலை', 'वसूली स्थिति')}
-                  </label>
+                  <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Recovery Status')}</label>
                   <select
                     value={medForm.recoveryStatus}
                     onChange={(e) => setMedForm({ ...medForm, recoveryStatus: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-bold"
+                    className="w-full mt-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs"
                   >
-                    <option value="Under Treatment">{t('Under Treatment', 'சிகிச்சையில் உள்ளது', 'उपचाराधीन')}</option>
-                    <option value="Recovering">{t('Recovering', 'குணமடைந்து வருகிறது', 'सुधार हो रहा है')}</option>
-                    <option value="Fully Recovered">{t('Fully Recovered', 'முழுமையாக குணமடைந்தது', 'पूरी तरह ठीक')}</option>
+                    <option value="Under Treatment">Under Treatment</option>
+                    <option value="Recovering">Recovering</option>
+                    <option value="Fully Recovered">Fully Recovered</option>
                   </select>
                 </div>
               </div>
-
               <div>
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                  {t('Symptoms Observed', 'கண்டறியப்பட்ட அறிகுறிகள்', 'लक्षण')}
-                </label>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Symptoms Observed')}</label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Swollen udder, slight temperature spike (39.2°C)"
                   value={medForm.symptomsObserved}
                   onChange={(e) => setMedForm({ ...medForm, symptomsObserved: e.target.value })}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
+                  className="w-full mt-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('Prescribed Medicine (Drug)')}</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Cloxacillin Infusion"
+                  value={medForm.drugName}
+                  onChange={(e) => setMedForm({ ...medForm, drugName: e.target.value })}
+                  className="w-full mt-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm"
                 />
               </div>
 
-              {/* Medicine field */}
-              <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-                <span className="text-[10px] font-bold uppercase text-teal-600 dark:text-teal-400">
-                  {t('Prescribed Medicine', 'பரிந்துரைக்கப்பட்ட மருந்து', 'दवा विवरण')}
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Medicine Name"
-                    value={medForm.drugName}
-                    onChange={(e) => setMedForm({ ...medForm, drugName: e.target.value })}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs font-semibold col-span-1"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Dosage (e.g. 15ml IM)"
-                    value={medForm.drugDosage}
-                    onChange={(e) => setMedForm({ ...medForm, drugDosage: e.target.value })}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs font-semibold col-span-1"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Duration (e.g. 3 Days)"
-                    value={medForm.drugDuration}
-                    onChange={(e) => setMedForm({ ...medForm, drugDuration: e.target.value })}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs font-semibold col-span-1"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Attending Veterinarian', 'மருத்துவர் பெயர்', 'पशु चिकित्सक')}
-                  </label>
-                  <input
-                    type="text"
-                    value={medForm.treatingDoctor}
-                    onChange={(e) => setMedForm({ ...medForm, treatingDoctor: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                    {t('Follow-up Checkup Date', 'மறுபரிசோதனை தேதி', 'फॉलो-अप दिनांक')}
-                  </label>
-                  <input
-                    type="date"
-                    value={medForm.followUpDate}
-                    onChange={(e) => setMedForm({ ...medForm, followUpDate: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowMedModal(false)}
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-xs"
-                >
-                  {t('Cancel', 'ரத்து', 'रद्द करें')}
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl font-bold text-xs shadow-md"
-                >
-                  {t('Save Treatment', 'சேமிக்கவும்', 'सुरक्षित करें')}
-                </button>
+              <div className="flex justify-end gap-2 pt-3">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setShowMedModal(false)}>
+                  {t('Cancel')}
+                </Button>
+                <Button variant="teal" size="sm" type="submit">
+                  {t('Save Treatment')}
+                </Button>
               </div>
             </form>
           </div>

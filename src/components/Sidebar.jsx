@@ -99,34 +99,34 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
       {/* Sidebar / Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800 transition-transform duration-300 transform md:relative md:translate-x-0 ${
-          isOpen ? 'translate-x-0 shadow-2xl shadow-slate-200/50 dark:shadow-slate-900/50' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between bg-[#F7F6F0] dark:bg-[#0D2219] text-[#20312A] dark:text-[#DDEADF] border-r border-[#DDEADF] dark:border-[#174D38]/60 transition-transform duration-300 transform md:relative md:translate-x-0 ${
+          isOpen ? 'translate-x-0 shadow-2xl shadow-black/10' : '-translate-x-full'
         } ${collapsed ? 'md:w-20' : 'w-72 md:w-72'} pb-safe pt-safe h-full shrink-0`}
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 md:p-5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <div className="flex items-center justify-between p-4 md:p-5 border-b border-[#DDEADF] dark:border-[#174D38]/60 shrink-0">
             {!collapsed && (
               <div className="flex items-center gap-2">
-                <Logo className="text-2xl" />
+                <Logo className="text-xl" />
               </div>
             )}
-            {collapsed && <Activity className="mx-auto hidden md:block text-emerald-500" size={24} />}
+            {collapsed && <Activity className="mx-auto hidden md:block text-[#4B8A64]" size={22} />}
             
             {/* Desktop Collapse Toggle */}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="hidden md:block p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors ml-auto"
+              className="hidden md:block p-1.5 rounded-lg bg-[#DDEADF]/60 dark:bg-[#174D38]/40 text-[#5A7065] dark:text-[#9FB5AA] hover:text-[#103B2D] dark:hover:text-white transition-colors ml-auto"
             >
-              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
             
             {/* Mobile Close Toggle */}
             <button
               onClick={() => setIsOpen(false)}
-              className="md:hidden p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="md:hidden p-1.5 rounded-lg bg-[#DDEADF]/60 dark:bg-[#174D38]/40 text-[#5A7065] dark:text-[#9FB5AA] hover:text-[#103B2D] dark:hover:text-white transition-colors"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
 
@@ -142,16 +142,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                   <button
                     key={item.id}
                     onClick={() => handleNavClick(item.id)}
-                    className={`w-full flex items-center gap-3 md:gap-4 px-3 md:px-4 py-3 rounded-xl transition-all font-medium text-sm group relative ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm group relative ${
                       isActive
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/20'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100'
+                        ? 'bg-[#174D38] text-white shadow-md shadow-[#174D38]/30'
+                        : 'text-[#5A7065] dark:text-[#9FB5AA] hover:bg-[#DDEADF]/70 dark:hover:bg-[#174D38]/30 hover:text-[#103B2D] dark:hover:text-white'
                     }`}
                   >
-                    <Icon size={20} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'}`} />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    <Icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-[#4B8A64] dark:text-[#4B8A64] group-hover:text-[#174D38] dark:group-hover:text-emerald-300'}`} />
+                    {!collapsed && <span className="truncate text-xs font-semibold">{item.label}</span>}
                     {item.badge > 0 && (
-                      <span className={`absolute ${collapsed ? 'top-1 right-2 hidden md:block' : 'right-4'} px-2 py-0.5 text-xxs font-bold bg-rose-500 text-white rounded-full`}>
+                      <span className={`absolute ${collapsed ? 'top-1 right-2 hidden md:block' : 'right-3'} px-1.5 py-0.5 text-[10px] font-bold bg-[#C94C48] text-white rounded-full`}>
                         {item.badge}
                       </span>
                     )}
@@ -161,16 +161,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             </nav>
           </div>
 
-          {/* Sidebar Footer (Toggles & Logout) */}
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
-
+          {/* Sidebar Footer (Logout) */}
+          <div className="p-4 border-t border-[#DDEADF] dark:border-[#174D38]/60 shrink-0">
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-200 border border-slate-200 dark:border-slate-700/50 hover:border-rose-200 dark:hover:border-rose-900/50 rounded-xl transition-all text-xs font-semibold ${
+              className={`w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-white/80 dark:bg-[#103B2D]/60 hover:bg-[#C94C48]/10 dark:hover:bg-[#C94C48]/20 text-[#5A7065] dark:text-[#9FB5AA] hover:text-[#C94C48] dark:hover:text-rose-300 border border-[#DDEADF] dark:border-[#174D38]/60 hover:border-[#C94C48]/40 rounded-xl transition-all text-xs font-semibold ${
                 collapsed ? 'md:px-0' : ''
               }`}
             >
-              <LogOut size={16} className="shrink-0" />
+              <LogOut size={15} className="shrink-0" />
               {(!collapsed) && <span>{t('Logout', 'வெளியேறு')}</span>}
             </button>
           </div>
