@@ -101,7 +101,9 @@ export const AppProvider = ({ children }) => {
     cattle,
     setCattle,
     addCollar: addCollarFromService,
-    removeCollar,
+    updateCollar: updateCollarFromService,
+    removeCollar: removeCollarFromService,
+    refreshCattle,
     addVaccination,
     addMedicalTreatment,
     addHealthMonitoring,
@@ -147,7 +149,7 @@ export const AppProvider = ({ children }) => {
       const newCow = await addCollarFromService(collarData);
 
       // Update profile cattle count
-      setFarmerProfile((prev) => ({ ...prev, cattleCount: prev.cattleCount + 1 }));
+      setFarmerProfile((prev) => ({ ...prev, cattleCount: (prev?.cattleCount || 0) + 1 }));
 
       // Push success notification
       await pushAlert({
@@ -161,6 +163,50 @@ export const AppProvider = ({ children }) => {
       return newCow;
     },
     [addCollarFromService, farmerId]
+  );
+
+  /**
+   * Update an existing collar record.
+   */
+  const updateCollar = useCallback(
+    async (collarId, updates) => {
+      const updatedCow = await updateCollarFromService(collarId, updates);
+
+      await pushAlert({
+        collarId,
+        farmerId,
+        title: 'Collar Record Updated',
+        message: `Details for ${updatedCow.name} (Collar ${collarId}) have been updated.`,
+        type: 'info'
+      });
+
+      return updatedCow;
+    },
+    [updateCollarFromService, farmerId]
+  );
+
+  /**
+   * Remove a collar + decrease profile count + push warning alert.
+   */
+  const removeCollar = useCallback(
+    async (collarId) => {
+      const targetCow = cattle.find((c) => String(c.id) === String(collarId));
+      await removeCollarFromService(collarId);
+
+      setFarmerProfile((prev) => ({
+        ...prev,
+        cattleCount: Math.max(0, (prev?.cattleCount || 1) - 1)
+      }));
+
+      await pushAlert({
+        collarId,
+        farmerId,
+        title: 'Collar Removed',
+        message: `Collar ${collarId} (${targetCow?.name || 'Livestock'}) was removed from active records.`,
+        type: 'warning'
+      });
+    },
+    [removeCollarFromService, cattle, farmerId]
   );
 
   /**
@@ -392,7 +438,9 @@ export const AppProvider = ({ children }) => {
         cattle,
         setCattle,
         addCollar,
+        updateCollar,
         removeCollar,
+        refreshCattle,
         addVaccination,
         addMedicalTreatment,
         addHealthMonitoring,

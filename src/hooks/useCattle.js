@@ -4,14 +4,18 @@
  * Wraps cattleService so React components get reactive state
  * without knowing anything about the underlying data source.
  *
- * Usage:
- *   const { cattle, addCollar, removeCollar, loading } = useCattle(farmerId);
+ * Full CRUD support:
+ *   - getCattle / refreshCattle
+ *   - addCollar
+ *   - updateCollar
+ *   - removeCollar
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { 
   getCattle, 
   addCattle, 
+  updateCattle as updateCattleService,
   deleteCattle,
   addVaccinationRecord as addVacService,
   addMedicalTreatmentRecord as addMedService,
@@ -19,51 +23,85 @@ import {
 } from '../services/cattleService';
 
 /**
- * @param {string} farmerId  — e.g. 'farmer-uma'
+ * @param {string} farmerId — e.g. 'farmer-uma'
  */
 export function useCattle(farmerId = 'farmer-uma') {
   const [cattle, setCattle] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Initial fetch
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    getCattle(farmerId)
-      .then((data) => {
-        if (!cancelled) {
-          setCattle(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err.message);
-          setLoading(false);
-        }
-      });
-    return () => { cancelled = true; };
+  const fetchCattle = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getCattle(farmerId);
+      setCattle(data);
+    } catch (err) {
+      console.error('Failed to load cattle records:', err);
+      setError(err.message || 'Failed to load cattle');
+    } finally {
+      setLoading(false);
+    }
   }, [farmerId]);
 
+  // Initial fetch
+  useEffect(() => {
+    fetchCattle();
+  }, [fetchCattle]);
+
   /**
-   * Register a new collar and update local state.
+   * Register a new collar and update reactive state.
    */
   const addCollar = useCallback(
     async (collarData) => {
-      const newCow = await addCattle({ ...collarData, farmerId });
-      setCattle((prev) => [...prev, newCow]);
-      return newCow;
+      setError(null);
+      try {
+        const newCow = await addCattle({ ...collarData, farmerId });
+        setCattle((prev) => {
+          const filtered = prev.filter((c) => String(c.id) !== String(newCow.id));
+          return [...filtered, newCow];
+        });
+        return newCow;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      }
     },
     [farmerId]
   );
 
   /**
-   * Remove a collar and update local state.
+   * Update an existing collar (keeps stable document ID).
+   */
+  const updateCollar = useCallback(
+    async (collarId, updates) => {
+      setError(null);
+      try {
+        const updated = await updateCattleService(collarId, updates);
+        setCattle((prev) =>
+          prev.map((c) => (String(c.id) === String(collarId) ? { ...c, ...updated } : c))
+        );
+        return updated;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      }
+    },
+    []
+  );
+
+  /**
+   * Remove a collar and update reactive state.
    */
   const removeCollar = useCallback(async (collarId) => {
-    await deleteCattle(collarId);
-    setCattle((prev) => prev.filter((c) => c.id !== collarId));
+    setError(null);
+    try {
+      await deleteCattle(collarId);
+      setCattle((prev) => prev.filter((c) => String(c.id) !== String(collarId)));
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
   }, []);
 
   /**
@@ -73,7 +111,7 @@ export function useCattle(farmerId = 'farmer-uma') {
     const newRecord = await addVacService(collarId, record);
     setCattle((prev) =>
       prev.map((c) =>
-        c.id === collarId
+        String(c.id) === String(collarId)
           ? { ...c, vaccinations: [newRecord, ...(c.vaccinations || [])] }
           : c
       )
@@ -88,7 +126,7 @@ export function useCattle(farmerId = 'farmer-uma') {
     const newRecord = await addMedService(collarId, record);
     setCattle((prev) =>
       prev.map((c) =>
-        c.id === collarId
+        String(c.id) === String(collarId)
           ? { ...c, medicalTreatments: [newRecord, ...(c.medicalTreatments || [])] }
           : c
       )
@@ -103,7 +141,7 @@ export function useCattle(farmerId = 'farmer-uma') {
     const newRecord = await addHmService(collarId, record);
     setCattle((prev) =>
       prev.map((c) =>
-        c.id === collarId
+        String(c.id) === String(collarId)
           ? { ...c, healthMonitoringHistory: [newRecord, ...(c.healthMonitoringHistory || [])] }
           : c
       )
@@ -122,7 +160,9 @@ export function useCattle(farmerId = 'farmer-uma') {
     cattle, 
     setCattle, 
     addCollar, 
+    updateCollar,
     removeCollar, 
+    refreshCattle: fetchCattle,
     addVaccination,
     addMedicalTreatment,
     addHealthMonitoring,
