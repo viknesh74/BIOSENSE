@@ -855,26 +855,66 @@ export default function CattleDetails() {
               </div>
             </div>
 
-            {/* GPS Summary */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-48 group">
+            {/* GPS Coordinate Card */}
+            <div
+              onClick={() => {
+                setSelectedCattleId(cow.id);
+                setActiveTab('gps');
+              }}
+              className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-48 group cursor-pointer hover:border-emerald-500/50 transition-all"
+              title="Click to open live GPS map tracking for this collar"
+            >
               <div className="flex justify-between items-start">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Live GPS Coordinates')}</span>
-                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/20 flex items-center justify-center text-teal-500">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('Live GPS Coordinates', 'ஜிபிஎஸ் இருப்பிடம்', 'लाइव जीपीएस')}</span>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${
+                  cow.telemetry?.gps?.lat && cow.telemetry?.gps?.lng
+                    ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                }`}>
                   <MapPin size={18} />
                 </div>
               </div>
+
               <div>
-                <h4 className="text-sm font-mono font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {cow.telemetry?.gps?.lat?.toFixed(5) || '11.07780'}° N
-                </h4>
-                <h4 className="text-sm font-mono font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {cow.telemetry?.gps?.lng?.toFixed(5) || '77.14287'}° E
-                </h4>
-                <p className="text-[10px] text-slate-400 mt-1">{t('Transmitting via NEO-6M GPS')}</p>
+                {cow.telemetry?.gps?.lat && cow.telemetry?.gps?.lng ? (
+                  <>
+                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 font-mono truncate">
+                      {cow.telemetry.gps.lat.toFixed(5)}° N
+                    </h4>
+                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 font-mono truncate">
+                      {cow.telemetry.gps.lng.toFixed(5)}° E
+                    </h4>
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>{t('Hardware Stream Live (NEO-6M)', 'NEO-6M நேரடி இணைப்பு', 'हार्डवेयर स्ट्रीम लाइव')}</span>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-sm font-bold text-slate-600 dark:text-slate-300">
+                      {t('Awaiting Hardware Fix', 'வன்பொருள் இணைப்புக்காக காத்திருக்கிறது', 'हार्डवेयर सिग्नल की प्रतीक्षा')}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                      {t('Acquiring Satellite Lock...', 'செயற்கைக்கோள் தேடுகிறது...', 'उपग्रह खोज रहा है...')}
+                    </p>
+                    <p className="text-[10px] text-amber-500 mt-1 font-semibold">
+                      ⚡ {t('Transmitter Standby (NEO-6M)', 'NEO-6M தயார்நிலை', 'NEO-6M स्टैंडबाय')}
+                    </p>
+                  </>
+                )}
               </div>
-              <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/30 py-1.5 px-2.5 rounded-lg flex justify-between items-center">
-                <span>{t('Geofence Safe Zone')}</span>
-                <span>{t('INSIDE 🟢')}</span>
+
+              <div className="text-xs text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 py-1.5 px-2.5 rounded-lg flex justify-between items-center">
+                <span>{t('Geofence Safe Zone', 'பாதுகாப்பு எல்லை', 'सुरक्षित क्षेत्र')}</span>
+                {cow.telemetry?.gps?.lat && cow.telemetry?.gps?.lng ? (
+                  <span className="text-emerald-500 font-bold">
+                    {t('INSIDE', 'உள்ளே', 'अंदर')}
+                  </span>
+                ) : (
+                  <span className="text-amber-500 font-bold">
+                    {t('STANDBY', 'தயார்நிலை', 'स्टैंडबाय')}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -932,6 +972,27 @@ export default function CattleDetails() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+          </div>
+
+          {/* Quick Action Navigation Buttons */}
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => {
+                setSelectedCattleId(cow.id);
+                setActiveTab('gps');
+              }}
+              className="flex-1 min-w-[200px] p-4 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-md transition-all cursor-pointer"
+            >
+              <MapPin size={18} />
+              <span>{t('View Live Tracking Map', 'நேரடி வரைபடத்தைக் காண்க', 'लाइव ट्रैकिंग देखें')}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('cattle-analytics')}
+              className="flex-1 min-w-[200px] p-4 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 font-bold rounded-2xl flex items-center justify-center gap-2.5 shadow-sm transition-all"
+            >
+              <Eye size={18} className="text-emerald-500" />
+              <span>{t('View Health Charts History', 'சுகாதார வரைபடங்கள்', 'स्वास्थ्य चार्ट देखें')}</span>
+            </button>
           </div>
         </div>
       )}

@@ -51,10 +51,10 @@ function saveStoredCattle(cattleList) {
 
 function sanitizeCattle(cattleList) {
   return cattleList.map((c, idx) => {
-    const defaultGps = STATIC_GPS_LOCATIONS[idx % STATIC_GPS_LOCATIONS.length];
     const cowGps = c.telemetry?.gps;
-    const isValidNewRegion = cowGps && cowGps.lat > 11.0 && cowGps.lat < 11.2 && cowGps.lng > 77.0 && cowGps.lng < 77.3;
-    const finalGps = isValidNewRegion ? cowGps : defaultGps;
+    // Only set GPS if valid coordinates streamed from hardware; otherwise keep null (no static fake coordinates)
+    const isValidGps = cowGps && typeof cowGps.lat === 'number' && typeof cowGps.lng === 'number' && !isNaN(cowGps.lat) && !isNaN(cowGps.lng) && cowGps.lat !== 0;
+    const finalGps = isValidGps ? cowGps : null;
 
     return {
       ...c,
@@ -182,8 +182,8 @@ export async function addCattle(collarData) {
       heartRate: Number(collarData.telemetry?.heartRate || 72),
       temperature: Number(collarData.telemetry?.temperature || 38.6),
       battery: Number(collarData.telemetry?.battery !== undefined ? collarData.telemetry.battery : 100),
-      gps: collarData.telemetry?.gps || { lat: CENTER_LAT, lng: CENTER_LNG },
-      lastUpdated: 'Just now'
+      gps: collarData.gps || collarData.telemetry?.gps || null,
+      lastUpdated: collarData.gps || collarData.telemetry?.gps ? 'Live ⚡' : 'Hardware Standby'
     },
     history: {
       heartRate: [72, 72, 72, 72, 72, 72, 72],

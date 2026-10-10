@@ -25,8 +25,8 @@ export const MOCK_CATTLE = [
       heartRate: 72,
       temperature: 38.6,
       battery: 88,
-      gps: { lat: 11.077809, lng: 77.142879 },
-      lastUpdated: 'Demo'
+      gps: null, // Only populated when live hardware (ESP32 NEO-6M) transmits GPS fix
+      lastUpdated: 'Hardware Standby'
     },
     history: {
       heartRate: [68, 70, 72, 75, 71, 73, 72],
@@ -187,8 +187,8 @@ export const MOCK_CATTLE = [
       heartRate: 78,
       temperature: 39.1,
       battery: 15,
-      gps: { lat: 11.077073, lng: 77.142729 },
-      lastUpdated: 'Demo'
+      gps: null, // Only populated when live hardware (ESP32 NEO-6M) transmits GPS fix
+      lastUpdated: 'Hardware Standby'
     },
     history: {
       heartRate: [74, 76, 75, 80, 82, 85, 78],

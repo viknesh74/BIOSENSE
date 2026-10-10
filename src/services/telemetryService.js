@@ -18,11 +18,11 @@ export function subscribeToTelemetry(cattleList, onUpdate, simConfig = {}) {
     return () => {};
   }
 
-  let updatedCattle = cattleList.map((cow, index) => ({
+  let updatedCattle = cattleList.map((cow) => ({
     ...cow,
     telemetry: {
       ...cow.telemetry,
-      gps: cow.telemetry?.gps?.lat ? cow.telemetry.gps : STATIC_GPS_LOCATIONS[index % STATIC_GPS_LOCATIONS.length]
+      gps: cow.telemetry?.gps?.lat ? cow.telemetry.gps : null
     }
   }));
 
@@ -64,10 +64,9 @@ export function subscribeToTelemetry(cattleList, onUpdate, simConfig = {}) {
         const validLat = liveLat !== null && liveLat !== undefined && !isNaN(Number(liveLat)) && Number(liveLat) !== 0;
         const validLng = liveLng !== null && liveLng !== undefined && !isNaN(Number(liveLng)) && Number(liveLng) !== 0;
 
-        const defaultGps = STATIC_GPS_LOCATIONS[index % STATIC_GPS_LOCATIONS.length];
         const liveGps = (validLat && validLng)
-          ? { lat: Number(liveLat), lng: Number(liveLng) }
-          : (cow.telemetry?.gps || defaultGps);
+          ? { lat: Number(liveLat), lng: Number(liveLng), isHardwareLive: true, lastHardwarePing: Date.now() }
+          : (cow.telemetry?.gps || null);
 
         console.log(`📡 RTDB Telemetry received for Collar ${cow.id}:`, {
           heartRate: data.heartRate,
@@ -98,17 +97,25 @@ export function subscribeToTelemetry(cattleList, onUpdate, simConfig = {}) {
     });
   }
 
-  // 2. Periodic Live Location Cycler across the 3 static GPS points
+  // 2. Subtle periodic micro-movement ONLY if active live GPS is present
   let stepIndex = 0;
   const timer = setInterval(() => {
-    stepIndex = (stepIndex + 1) % STATIC_GPS_LOCATIONS.length;
+    stepIndex = (stepIndex + 1) % 100;
     updatedCattle = updatedCattle.map((cow, i) => {
-      const nextGps = STATIC_GPS_LOCATIONS[(stepIndex + i) % STATIC_GPS_LOCATIONS.length];
+      // Do not invent static GPS locations if hardware has not sent a fix
+      if (!cow.telemetry?.gps?.lat) return cow;
+      const curGps = cow.telemetry.gps;
+      const dLat = Math.sin((stepIndex + i) * 0.7) * 0.000015;
+      const dLng = Math.cos((stepIndex + i) * 0.7) * 0.000015;
       return {
         ...cow,
         telemetry: {
           ...cow.telemetry,
-          gps: nextGps,
+          gps: {
+            ...curGps,
+            lat: Number((curGps.lat + dLat).toFixed(6)),
+            lng: Number((curGps.lng + dLng).toFixed(6))
+          },
           lastUpdated: 'Live ⚡'
         }
       };
